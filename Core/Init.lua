@@ -145,6 +145,7 @@ local function Startup()
     end
     started = true
     WBF.Database.Init()
+    WBF.NotebookPets.Register(bus)
     WBF.CharacterTrack.Register(bus)
     WBF.Economy.Register(bus)
     WBF.Instances.Register(bus)

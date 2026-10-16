@@ -6,6 +6,10 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 
 ### Added
 
+- Optional, read-only **Queued in Rematch** status on Notebook pets, Sheet and FYI. Hidden when Rematch is unavailable or the exact pet is not queued; no extra notifications or queue management.
+
+- Individual-pet Notebook level lists with saved GUIDs, live level-25 completion, a paged picker, floating Sheet support and FYI progress. Older species entries remain available for choosing a specific copy.
+
 - A concise addon README and a separate guide covering usage, tracking behaviour, saved data and development checks.
 - This changelog to track notable changes alongside the Git commit history.
 - Regression tests for pet session progression and existing pet/profession aggregation behaviour.

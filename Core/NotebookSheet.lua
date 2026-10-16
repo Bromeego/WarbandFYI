@@ -269,7 +269,7 @@ function WBF.NotebookSheet.FullWidth(block, columns)
     if (tonumber(columns) or 1) < 2 then
         return true
     end
-    return type(block) == "table" and block.type == "checklist"
+    return type(block) == "table" and (block.type == "checklist" or block.type == "pet_level_list")
 end
 
 function WBF.NotebookSheet.VisibleItems(block)
