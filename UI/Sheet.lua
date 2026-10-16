@@ -311,6 +311,8 @@ local function CheckPool()
 end
 
 local function ResetCard(card)
+    if card.PetAdd then card.PetAdd:Hide() end
+    for _, row in ipairs(card.PetRows or {}) do row:Hide() end
     card:SetScript("OnMouseUp", nil)
     card:SetScript("OnEnter", nil)
     card:SetScript("OnLeave", nil)
@@ -361,7 +363,10 @@ local function DrawBlock(block, x, y, width)
     ResetCard(card)
     local textX = 8
     local height = 36
-    if block.type == "achievement" then
+    if block.type == "pet_level_list" then
+        local settings = WBF.NotebookSheet.Settings()
+        return WBF.UI.NotebookPets.Draw(card, block, width, settings and settings.hideCompleted)
+    elseif block.type == "achievement" then
         local progress = WBF.PlanAchievements and WBF.PlanAchievements.Progress and WBF.PlanAchievements.Progress(block.achievementID) or nil
         local name = (progress and progress.name) or ("Achievement " .. tostring(block.achievementID or ""))
         if progress and progress.icon then

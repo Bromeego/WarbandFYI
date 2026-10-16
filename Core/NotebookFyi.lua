@@ -870,6 +870,15 @@ end
 
 local function LinesFor(block)
     local lines = {}
+    if block.type == "pet_level_list" then
+        local rows, _, summary = WBF.NotebookPets.Progress(block)
+        lines[1] = { text = block.title or "Pets to Level", detail = summary, blockId = block.id }
+        for _, row in ipairs(rows) do
+            lines[#lines + 1] = { text = WBF.NotebookPets.Label(row), detail = row.detail,
+                icon = row.icon, completed = row.complete, blockId = block.id }
+        end
+        return lines
+    end
     if block.type == "text" then
         local text = FirstLine(block.text)
         if text ~= "" then
@@ -1041,7 +1050,7 @@ function WBF.NotebookFyi.Describe(trigger)
             lines[#lines + 1] = blockLines[lineIndex]
         end
     end
-    if trigger.targetKind == "block" then
+    if trigger.targetKind == "block" and not (blocks[1] and blocks[1].type == "pet_level_list") then
         lines = {}
         local line = blocks[1] and LineFor(blocks[1]) or nil
         if line and line.detail then

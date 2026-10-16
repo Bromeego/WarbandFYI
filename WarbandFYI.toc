@@ -14,6 +14,7 @@ Core/Database.lua
 Core/Maintenance.lua
 Core/NotebookSmart.lua
 Core/Notebook.lua
+Core/NotebookPets.lua
 Core/NotebookSheet.lua
 Core/NotebookFyi.lua
 Core/Triggers.lua

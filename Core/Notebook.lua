@@ -974,39 +974,46 @@ function WBF.Notebook.AddReference(sectionId, spec)
     })
 end
 
--- A pet levelling roster stores species IDs, never hand-entered levels.
+-- A pet levelling roster stores pet GUIDs, never hand-entered levels.
 function WBF.Notebook.AddPetLevelList(sectionId, title)
     local section = WBF.Notebook.GetSection(sectionId)
     if not section or #section.blockOrder >= MAX_BLOCKS then return nil end
     local now = Now()
     return PlaceBlock(section, {
         id = Alloc("block"), sectionId = section.id, type = "pet_level_list",
-        title = Clip(title or "Pets to Level", 80), species = {},
+        title = Clip(title or "Pets to Level", 80), pets = {},
         createdAt = now, updatedAt = now,
     })
 end
 
-function WBF.Notebook.AddPetToList(blockId, speciesID)
+function WBF.Notebook.AddPetToList(blockId, petID)
     local block = WBF.Notebook.GetBlock(blockId)
-    speciesID = tonumber(speciesID)
-    if not block or block.type ~= "pet_level_list" or not speciesID or speciesID < 1 then return false end
-    block.species = type(block.species) == "table" and block.species or {}
-    for _, existing in ipairs(block.species) do
-        if existing == speciesID then return false end
+    if not block or block.type ~= "pet_level_list" then return false end
+    local pet = WBF.NotebookPets.Read(petID)
+    if not pet or not pet.level or pet.canBattle == false then return false end
+    local entries = WBF.NotebookPets.Entries(block)
+    local legacy
+    for index, existing in ipairs(entries) do
+        if existing.petID == petID then return false end
+        if not existing.petID and existing.speciesID == pet.speciesID then legacy = index end
     end
-    if #block.species >= 60 then return false end
-    table.insert(block.species, speciesID)
+    if not legacy and #entries >= 60 then return false end
+    entries[legacy or (#entries + 1)] = { petID = petID, speciesID = pet.speciesID,
+        name = pet.name, icon = pet.icon }
     TouchBlock(block)
+    Save(block)
     return true
 end
 
-function WBF.Notebook.RemovePetFromList(blockId, speciesID)
+function WBF.Notebook.RemovePetFromList(blockId, petID)
+    if type(petID) ~= "string" and type(petID) ~= "number" then return false end
     local block = WBF.Notebook.GetBlock(blockId)
     if not block or block.type ~= "pet_level_list" then return false end
-    for index, id in ipairs(block.species or {}) do
-        if id == tonumber(speciesID) then
-            table.remove(block.species, index)
+    for index, entry in ipairs(WBF.NotebookPets.Entries(block)) do
+        if entry.petID == petID or (not entry.petID and entry.speciesID == petID) then
+            table.remove(block.pets, index)
             TouchBlock(block)
+            Save(block)
             return true
         end
     end
@@ -1078,8 +1085,11 @@ function WBF.Notebook.DuplicateBlock(id)
         block.source = source.source
     elseif source.type == "pet_level_list" then
         block.title = source.title
-        block.species = {}
-        for _, id in ipairs(source.species or {}) do block.species[#block.species + 1] = id end
+        block.pets = {}
+        for _, entry in ipairs(WBF.NotebookPets.Entries(source)) do
+            block.pets[#block.pets + 1] = { petID = entry.petID, speciesID = entry.speciesID,
+                name = entry.name, icon = entry.icon }
+        end
     elseif source.type == "resource" then
         block.resourceKey = source.resourceKey
         block.sourceURL = source.sourceURL
