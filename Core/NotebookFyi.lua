@@ -874,7 +874,8 @@ local function LinesFor(block)
         local rows, _, summary = WBF.NotebookPets.Progress(block)
         lines[1] = { text = block.title or "Pets to Level", detail = summary, blockId = block.id }
         for _, row in ipairs(rows) do
-            lines[#lines + 1] = { text = WBF.NotebookPets.Label(row), detail = row.detail,
+            lines[#lines + 1] = { text = WBF.NotebookPets.Label(row),
+                detail = row.detail .. (row.queueStatus and (" - " .. row.queueStatus) or ""),
                 icon = row.icon, completed = row.complete, blockId = block.id }
         end
         return lines

@@ -60,6 +60,8 @@ Open the page or section in the floating Sheet to keep progress visible; **Hide 
 
 Older species-only entries show **Choose a copy**: add that species again and select the intended pet to replace the old entry. A caged, released or temporarily unavailable pet remains listed as **Pet unavailable**, and never borrows another copy's level. If the client lacks the unfiltered owned-pet API, the picker says **Journal filters apply**; clear Journal filters to find other pets. Already saved pets are always read directly by ID.
 
+When Rematch is running with a compatible queue API, listed pets show **Queued in Rematch** in Notebook, Sheet and FYI. This optional badge matches the exact pet ID and updates when Rematch updates its queue. Unqueued pets and unavailable or incompatible Rematch installations show no Rematch status. Level-25 pets show completion instead. WarbandFYI only reads queue membership; it never adds, removes or reorders Rematch pets, and does not save a second copy of its queue.
+
 ### Saved data and history
 
 WoW saves addon data locally using the `WarbandFYI_DB` and `WarbandFYI_Backup` saved variables. The account's `WTF/Account/<account>/SavedVariables/WarbandFYI.lua` file contains this data; it is separate from the addon code in `Interface/AddOns`.

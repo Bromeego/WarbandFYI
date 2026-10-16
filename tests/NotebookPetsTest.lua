@@ -124,7 +124,11 @@ local function frame(parent)
     function f:SetEnabled(enabled) self.enabled = enabled end
     function f:CreateFontString() return frame(self) end
     function f:CreateTexture() return frame(self) end
-    setmetatable(f, { __index = function() return function() end end })
+    function f:SetShown(shown) self.shown = shown end
+    setmetatable(f, { __index = function(_, key)
+        if key == "Queue" then return nil end
+        return function() end
+    end })
     frames[#frames + 1] = f
     return f
 end
@@ -160,7 +164,54 @@ card.PetAdd = false
 card.Text, card.Sub, card.Hint = frame(card), frame(card), frame(card)
 WBF.UI.NotebookPets.Draw(card, uiBlock, 300)
 eq(card.PetRows[1].Level.text, "Lv 9 / 25")
+-- Optional Rematch membership uses the exact GUID and is never persisted.
+eq(P.View(uiBlock.pets[1]).queueStatus, nil)
+local membership = { [ids[9]] = true }
+local queue = { IsPetLeveling = function(_, id) return membership[id] or false end,
+    Update = function() end }
+Rematch = { queue = queue }
+eq(P.View(uiBlock.pets[1]).queueStatus, "Queued in Rematch")
+eq(P.View({ petID = ids[8], speciesID = 1 }).queueStatus, nil)
+eq(P.View({ speciesID = 1 }).queueStatus, nil)
+eq(uiBlock.pets[1].queueStatus, nil)
+WBF.UI.NotebookPets.Draw(card, uiBlock, 300)
+eq(card.PetRows[1].Queue.text, "Queued in Rematch")
+eq(card.PetRows[1].Queue:IsShown(), true)
+local fyi = WBF.NotebookFyi.Describe({ targetKind = "block", targetId = uiBlock.id, triggerType = "LOGIN" })
+eq(fyi.lines[2].detail, "Lv 9 / 25 - Queued in Rematch")
+membership[ids[9]] = nil
+WBF.UI.NotebookPets.Draw(card, uiBlock, 300)
+eq(card.PetRows[1].Queue:IsShown(), false)
+queue.IsPetLeveling = function() error("incompatible addon") end
+eq(P.View(uiBlock.pets[1]).queueStatus, nil)
+Rematch = { queue = {} }
+eq(P.View(uiBlock.pets[1]).queueStatus, nil)
+-- Late loading and repeated addon events install only one read-only post-hook.
+Rematch = nil
+local callbacks, hooks, pending = {}, {}, {}
+hooksecurefunc = function(target, method, callback)
+    hooks[#hooks + 1] = { target, method, callback }
+end
+C_Timer.After = function(_, callback) pending[#pending + 1] = callback end
+P.Register({ On = function(_, event, callback) callbacks[event] = callback end })
+eq(#hooks, 0)
+Rematch = { queue = queue }
+queue.IsPetLeveling = function(_, id) return membership[id] == true end
+callbacks.ADDON_LOADED(); callbacks.ADDON_LOADED()
+eq(#hooks, 1)
+eq(hooks[1][1], queue)
+eq(hooks[1][2], "Update")
+pending[1]()
+local before = refreshes
+membership[ids[9]] = true
+hooks[1][3](); hooks[1][3]()
+eq(#pending, 2)
+pending[2]()
+eq(refreshes, before + 1)
 pets[ids[9]].petLevel = 25
+eq(P.View(uiBlock.pets[1]).queueStatus, nil)
+Rematch = nil
+eq(P.View(uiBlock.pets[1]).queueStatus, nil)
 WBF.UI.NotebookPets.Draw(card, uiBlock, 300, true)
 eq(card.Hint.text, "1 / 1 at level 25")
 eq(card.PetRows[1]:IsShown(), false)

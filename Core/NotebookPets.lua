@@ -4,6 +4,15 @@ local _, WBF = ...
 WBF.NotebookPets = {}
 local P = WBF.NotebookPets
 
+-- Optional, read-only integration. Never load Rematch or copy its queue.
+function P.RematchQueued(petID)
+    local queue = type(Rematch) == "table" and Rematch.queue
+    if type(petID) ~= "string" or type(queue) ~= "table"
+        or type(queue.IsPetLeveling) ~= "function" then return false end
+    local ok, queued = pcall(queue.IsPetLeveling, queue, petID)
+    return ok and queued == true
+end
+
 local function Call(name, ...)
     local fn = C_PetJournal and C_PetJournal[name]
     if type(fn) ~= "function" then return nil end
@@ -53,6 +62,8 @@ function P.View(entry)
     row.name = row.name or entry.name or (species and species.name) or ("Pet " .. tostring(entry.speciesID))
     row.icon = row.icon or entry.icon or (species and species.icon)
     row.complete = live ~= nil and row.level ~= nil and row.level >= 25
+    row.queueStatus = live and not row.complete and P.RematchQueued(entry.petID)
+        and "Queued in Rematch" or nil
     row.detail = not entry.petID and "Choose a copy" or not live and "Pet unavailable"
         or not row.level and "Level unavailable" or ("Lv " .. row.level .. " / 25" .. (row.complete and "  Done" or ""))
     return row
@@ -107,6 +118,7 @@ end
 
 function P.Register(bus)
     local queued = false
+    local hooked = {}
     local function refresh()
         if queued then return end
         queued = true
@@ -123,4 +135,16 @@ function P.Register(bus)
         "NEW_PET_ADDED", "PET_BATTLE_CLOSE", "PLAYER_ENTERING_WORLD" }) do
         bus:On(event, refresh)
     end
+    local function connect()
+        local queue = type(Rematch) == "table" and Rematch.queue
+        if type(queue) ~= "table" or hooked[queue] or type(queue.Update) ~= "function"
+            or type(queue.IsPetLeveling) ~= "function" or type(hooksecurefunc) ~= "function" then return end
+        -- Update rebuilds Rematch's membership lookup after queue edits.
+        -- A post-hook observes the finished update without changing its behavior.
+        local ok = pcall(hooksecurefunc, queue, "Update", refresh)
+        if ok then hooked[queue] = true; refresh() end
+    end
+    bus:On("ADDON_LOADED", connect)
+    bus:On("PLAYER_ENTERING_WORLD", connect)
+    connect()
 end
