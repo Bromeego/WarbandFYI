@@ -86,7 +86,8 @@ function WBF.PetBattles.NoteLevel(bucket, petKey, name, newLevel, previousLevel)
     if not row then
         row = {
             name = name,
-            from = tonumber(previousLevel) or (newLevel - 1),
+            -- An unavailable opening snapshot does not prove a one-level gain.
+            from = tonumber(previousLevel),
             to = newLevel,
         }
         bucket[petKey] = row
@@ -169,6 +170,52 @@ local function IsPet(event)
         return true
     end
     return event.eventType == "pet"
+end
+
+-- Presentation only: retain every battle event and its original delta. Build
+-- from retained history before UI filters/limits, including resumed sessions.
+-- Missing IDs or a gap in levels cannot safely establish session progression.
+function WBF.PetBattles.SessionLevelDetails(events)
+    local ordered, sessions, details = {}, {}, {}
+    for index, event in ipairs(events or {}) do
+        if IsPetBattle(event) and (event.meta or {}).kind == "level" then
+            ordered[#ordered + 1] = { event = event, index = index }
+        end
+    end
+    table.sort(ordered, function(a, b)
+        local x, y = a.event, b.event
+        if (x.at or 0) ~= (y.at or 0) then
+            return (x.at or 0) < (y.at or 0)
+        end
+        if (x.id or 0) ~= (y.id or 0) then
+            return (x.id or 0) < (y.id or 0)
+        end
+        return a.index < b.index
+    end)
+    for _, entry in ipairs(ordered) do
+        local event = entry.event
+        local meta = event.meta
+        local first, last = tonumber(meta.fromLevel), tonumber(meta.toLevel)
+        if event.sessionId ~= nil and meta.petKey and meta.petKey ~= "" then
+            local session = sessions[event.sessionId]
+            if not session then
+                session = {}
+                sessions[event.sessionId] = session
+            end
+            local prior = session[meta.petKey]
+            if first and last and first >= 1 and last <= 25 and last > first then
+                local start = prior and prior.to == first and prior.from or first
+                session[meta.petKey] = { from = start, to = last }
+                if start < first then
+                    local folded = WBF.PetBattles.FoldLevels(meta.petName, start, last)
+                    details[event] = folded.detail .. " (session)"
+                end
+            else
+                session[meta.petKey] = nil
+            end
+        end
+    end
+    return details
 end
 
 function WBF.PetBattles.ApplyEvent(bucket, event)

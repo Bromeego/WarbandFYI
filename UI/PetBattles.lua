@@ -665,6 +665,7 @@ function WBF.UI.PetBattlesView.Render(summary, context, width)
     WBF.UI.AcquireSection(board, activityHeading, 0, y, tableWidth)
     local tableY = y + 26
     local rows = {}
+    local sessionDetails = WBF.PetBattles.SessionLevelDetails(WBF.Database.Get().events)
     table.sort(events, function(a, b)
         if a.at == b.at then
             return (a.id or 0) > (b.id or 0)
@@ -681,7 +682,7 @@ function WBF.UI.PetBattlesView.Render(summary, context, width)
             rows[#rows + 1] = {
                 time = WBF.Format.Ago(event.at),
                 event = meta.eventLabel or (event.eventType == WBF.EventType.Pet and "New pet" or "Pet battle"),
-                detail = meta.detail or event.text or "",
+                detail = sessionDetails[event] or meta.detail or event.text or "",
                 who = showWho and name or nil,
                 classFile = character and character.classFile or nil,
                 collectionEvent = (meta.kind == "capture" or event.eventType == WBF.EventType.Pet) and meta.speciesID and event or nil,
