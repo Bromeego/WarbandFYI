@@ -1,0 +1,77 @@
+## Interface: 120105, 120100, 120007
+## Title: WarbandFYI
+## Notes: See what your Warband's been up to.
+## Version: 0.2.0-dev.2c
+## SavedVariables: WarbandFYI_DB, WarbandFYI_Backup
+## AllowLoadGameType: mainline
+## IconTexture: Interface\Icons\INV_Misc_Book_09
+
+Utils/Debug.lua
+Utils/Time.lua
+Utils/Format.lua
+
+Core/Database.lua
+Core/Maintenance.lua
+Core/NotebookSmart.lua
+Core/Notebook.lua
+Core/NotebookSheet.lua
+Core/NotebookFyi.lua
+Core/Triggers.lua
+Core/EventTriggers.lua
+Core/ContextFyi.lua
+Core/Events.lua
+Core/Characters.lua
+Core/Sessions.lua
+Core/Aggregator.lua
+Core/MonthHistory.lua
+Core/Detail.lua
+Core/SampleData.lua
+
+Tracking/Character.lua
+Tracking/Gold.lua
+Tracking/Economy.lua
+Tracking/Instances.lua
+Tracking/CollectionSources.lua
+Tracking/CollectionHunts.lua
+Tracking/Prey.lua
+Tracking/QuestVisibility.lua
+Tracking/Quests.lua
+Tracking/Achievements.lua
+Tracking/PlanAchievements.lua
+Tracking/Collections.lua
+Tracking/Housing.lua
+Tracking/Reputation.lua
+Tracking/Delves.lua
+Tracking/Professions.lua
+Tracking/Crafts.lua
+Tracking/WorldActivity.lua
+Tracking/PetBattles.lua
+Tracking/ResourceShift.lua
+Tracking/ResourceMeta.lua
+Tracking/ResourceClassification.lua
+Tracking/ResourceBehaviour.lua
+Tracking/Resources.lua
+
+UI/Components.lua
+UI/Navigation.lua
+UI/CollectionHunts.lua
+UI/Dashboard.lua
+UI/Detail.lua
+UI/ResourceDetail.lua
+UI/GoldDetail.lua
+UI/CharacterDetail.lua
+UI/PetBattles.lua
+UI/Activity.lua
+UI/Characters.lua
+UI/Resources.lua
+UI/Settings.lua
+UI/Notebook.lua
+UI/NotebookPets.lua
+UI/NotebookAdd.lua
+UI/Sheet.lua
+UI/Fyi.lua
+UI/ContextFyi.lua
+UI/Search.lua
+UI/MainWindow.lua
+
+Core/Init.lua
