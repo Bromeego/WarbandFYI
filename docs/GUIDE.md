@@ -50,6 +50,18 @@ Session progression uses the pet's unique ID, so two pets with the same name sta
 
 If earlier history or identifying information is missing, the addon keeps the known event detail instead of assuming a starting level. Missing opening levels are not counted as an invented one-level gain.
 
+### Pet Level Lists in Notebook
+
+Open `/wbfyi notebook`, choose a page and section, then use **Add → Pet Level List**. **Add pet** opens a searchable, paged list of owned battle pets. Search by species, custom name or pet ID. Each copy has its own row; the short ID beside its name distinguishes duplicates, and the tooltip shows its full ID.
+
+Lists are saved account-wide with Notebook. They store the chosen pet's ID, not a saved level: current levels and **Done** at level 25 come from Pet Journal. Click a listed pet to open it in the Journal; right-click to remove it. Lists support up to 60 pets and can be duplicated using the usual block menu.
+
+Open the page or section in the floating Sheet to keep progress visible; **Hide completed** hides level-25 pets there. Existing Notebook FYI reminders include the list's live completion count and pet rows. Reminders remain opt-in through the usual FYI controls. This is a planning list, with no team loading or battle automation.
+
+Older species-only entries show **Choose a copy**: add that species again and select the intended pet to replace the old entry. A caged, released or temporarily unavailable pet remains listed as **Pet unavailable**, and never borrows another copy's level. If the client lacks the unfiltered owned-pet API, the picker says **Journal filters apply**; clear Journal filters to find other pets. Already saved pets are always read directly by ID.
+
+When Rematch is running with a compatible queue API, listed pets show **Queued in Rematch** in Notebook, Sheet and FYI. This optional badge matches the exact pet ID and updates when Rematch updates its queue. Unqueued pets and unavailable or incompatible Rematch installations show no Rematch status. Level-25 pets show completion instead. WarbandFYI only reads queue membership; it never adds, removes or reorders Rematch pets, and does not save a second copy of its queue.
+
 ### Saved data and history
 
 WoW saves addon data locally using the `WarbandFYI_DB` and `WarbandFYI_Backup` saved variables. The account's `WTF/Account/<account>/SavedVariables/WarbandFYI.lua` file contains this data; it is separate from the addon code in `Interface/AddOns`.
@@ -79,9 +91,10 @@ Run the current regression tests from the repository root with Lua 5.1:
 lua tests/PetSessionProgressTest.lua
 lua tests/ProfessionPetTest.lua
 lua tests/CollectionHuntsTest.lua
+lua tests/NotebookPetsTest.lua
 git diff --check
 ```
 
-These tests cover pet session progression, pet/profession aggregation, and collection-hunt lockouts. They do not replace in-game checks of rendering, game APIs or other features. Test relevant changes in WoW before calling them verified in-game.
+These tests cover pet session progression, pet/profession aggregation, collection-hunt lockouts, and Notebook pet identity, persistence, progress and picker interactions. They do not replace in-game checks of rendering, game APIs or other features. For Pet Level Lists, check two copies of one species, level one to 25, reload, cage one, page through picker results, and open the same list in Notebook, Sheet and an FYI reminder.
 
 Add a short entry under **Unreleased** in [CHANGELOG.md](../CHANGELOG.md) for each notable change. Use Added, Changed, Fixed or Removed as appropriate. When publishing a release, move those entries under its actual version and release date, and update the addon version in the TOC. Git commits retain the finer implementation history.
