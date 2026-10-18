@@ -33,6 +33,9 @@ WBF.CollectionSources = {
             title = "Clutch of Ji-Kun", aliases = {"Ji-Kun", "Ji Kun", "Clutch of Ji Kun"},
             collectionType = "mount", mountSpellID = 139448,
             note = "Normal/Heroic; not Raid Finder",
+            -- 7 is the legacy Raid Finder difficulty. 17 is the modern one.
+            -- Neither lockout spends a Normal or Heroic Ji-Kun attempt.
+            ignoreDifficulties = { [7] = true, [17] = true },
         },
         mimiron = {
             instance = "Ulduar", boss = "Yogg-Saron", itemIDs = {45693},

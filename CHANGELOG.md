@@ -12,6 +12,10 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 
 ### Fixed
 
+- Collection Hunts no longer treats a Raid Finder Ji-Kun kill as a finished Clutch of Ji-Kun attempt. Normal and Heroic lockouts still count.
+- `/wbfyi hunt` only handles the hunt command, so words that merely start with "hunt" open the window again.
+- `/wbfyi search` only handles the search command, so a word such as "searching" is not treated as a query.
+- The live session clock no longer keeps ticking while Collection Hunts is the open view.
 - Recent Pet Activity now shows known pet levelling progression within a session, so a pet trained from 1 to 25 can show that full span instead of only the last battle's 24 -> 25. Individual events and their original gains are preserved.
 - Session progression respects starting levels, unique pet IDs and session boundaries, and falls back safely when history is missing.
 - An unavailable starting level no longer produces an assumed one-level gain.

@@ -404,21 +404,24 @@ function Hunts.Status(key, guid)
 
     local source, sourceKey = SourceForHunt(key, target)
     local needed = sourceKey and REQUIRED_DIFFICULTY[sourceKey]
+    local ignored = source and source.ignoreDifficulties
     local bossKey = Norm(target.boss)
     local saves = raid.saves
     -- Legacy snapshots combined kills from all difficulties. A prior kill can
-    -- still indicate an attempt, but cannot establish the required difficulty.
+    -- still indicate an attempt, but cannot establish the required difficulty
+    -- or separate a Raid Finder kill from a real mount attempt.
     if type(saves) ~= "table" then
-        if needed then return "unknown" end
+        if needed or ignored then return "unknown" end
         if raid.bosses and raid.bosses[bossKey] then return "done" end
         return "available"
     end
     local sawOtherDifficulty = false
     for _, saved in ipairs(saves) do
         if type(saved) == "table" and type(saved.expiresAt) == "number" and saved.expiresAt > now then
-            local matching = not needed or saved.difficultyID == needed
+            local skipped = ignored and ignored[saved.difficultyID]
+            local matching = not skipped and (not needed or saved.difficultyID == needed)
             if matching and saved.bosses and saved.bosses[bossKey] then return "done" end
-            if needed and not matching then sawOtherDifficulty = true end
+            if needed and not matching and not skipped then sawOtherDifficulty = true end
         end
     end
     -- An ICC lockout on another difficulty may block a 25 Heroic run.
@@ -570,8 +573,10 @@ local function FindCharacter(input)
 end
 
 function Hunts.Slash(raw)
+    if type(raw) ~= "string" then return false end
     local lower = raw:lower()
-    if not lower:match("^hunts?%s*") then return false end
+    -- "hunt" is a whole command. Do not swallow "hunter" or "hundred".
+    if lower ~= "hunt" and lower ~= "hunts" and not lower:match("^hunts?%s") then return false end
     local cmd, target, rest = lower:match("^hunts?%s+(%w+)%s*(%w*)%s*(.-)%s*$")
     local data = Store()
     if cmd == "add" or cmd == "remove" then

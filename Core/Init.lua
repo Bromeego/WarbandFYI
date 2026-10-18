@@ -214,8 +214,13 @@ local function Slash(message)
     end
     if WBF.CollectionHunts and WBF.CollectionHunts.Slash(raw) then return end
     local text = raw:lower()
-    local searchText = raw:match("^[Ss]earch%s*(.*)$")
-    if searchText ~= nil and WBF.UI and WBF.UI.Search and WBF.UI.Search.Focus then
+    local searchText
+    if raw:match("^[Ss]earch$") then
+        searchText = ""
+    else
+        searchText = raw:match("^[Ss]earch%s+(.*)$")
+    end
+    if searchText and WBF.UI and WBF.UI.Search and WBF.UI.Search.Focus then
         if WBF.UI.frame and not WBF.UI.frame:IsShown() then
             WBF.UI.frame:Show()
         end
@@ -322,7 +327,7 @@ local function Slash(message)
         WBF.UI.RequestRefresh()
     elseif text == "help" then
         print("|cffd4af37WarbandFYI|r /wbfyi | /wbfyi fyi | /wbfyi debug | /wbfyi debug resources | /wbfyi debug renown | /wbfyi debug gathering | /wbfyi debug fishing | /wbfyi debug rares | /wbfyi sample | /wbfyi clearsample | /wbfyi reset | /wbfyi resetresource <name> | /wbfyi status")
-        print("|cffd4af37WarbandFYI|r /wbfyi search <text> | /wbfyi note <text> | /wbfyi notebook | /wbfyi debug notebook | /wbfyi debug events | /wbfyi debug fyis | /wbfyi debug simulateevent \"Darkmoon Faire\"")
+        print("|cffd4af37WarbandFYI|r /wbfyi search <text> | /wbfyi note <text> | /wbfyi notebook | /wbfyi hunt list | /wbfyi debug notebook | /wbfyi debug events | /wbfyi debug fyis | /wbfyi debug simulateevent \"Darkmoon Faire\"")
     elseif text == "hide" then
         if WBF.UI.frame then
             WBF.UI.frame:Hide()

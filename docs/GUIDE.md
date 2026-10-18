@@ -78,9 +78,10 @@ Run the current regression tests from the repository root with Lua 5.1:
 ```sh
 lua tests/PetSessionProgressTest.lua
 lua tests/ProfessionPetTest.lua
+lua tests/CollectionHuntsTest.lua
 git diff --check
 ```
 
-These tests cover pet session progression and pet/profession aggregation. They do not replace in-game checks of rendering, game APIs or other features. Test relevant changes in WoW before calling them verified in-game.
+These tests cover pet session progression, pet/profession aggregation, and collection-hunt lockouts. They do not replace in-game checks of rendering, game APIs or other features. Test relevant changes in WoW before calling them verified in-game.
 
 Add a short entry under **Unreleased** in [CHANGELOG.md](../CHANGELOG.md) for each notable change. Use Added, Changed, Fixed or Removed as appropriate. When publishing a release, move those entries under its actual version and release date, and update the addon version in the TOC. Git commits retain the finer implementation history.

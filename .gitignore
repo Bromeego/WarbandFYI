@@ -1,0 +1,4 @@
+# Local installer and Python caches. Not part of the addon.
+lua-setup.exe
+__pycache__/
+*.pyc

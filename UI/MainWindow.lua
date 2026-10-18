@@ -757,7 +757,7 @@ function WBF.UI.MainWindow.Create()
             return
         end
         local view = self.view
-        if view == "settings" or view == "characters" or view == "resources" or view == "activity" or view == "notebook" then
+        if view == "settings" or view == "characters" or view == "resources" or view == "activity" or view == "notebook" or view == "hunts" then
             return
         end
         WBF.UI.Dashboard.TickLivePlay()
