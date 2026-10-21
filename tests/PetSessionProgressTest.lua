@@ -1,5 +1,6 @@
 -- Run from addon root: lua tests/PetSessionProgressTest.lua
 local WBF = {}
+assert(loadfile("Utils/Format.lua"))("WarbandFYI", WBF)
 assert(loadfile("Tracking/PetBattles.lua"))("WarbandFYI", WBF)
 local P = WBF.PetBattles
 local checks = 0

@@ -35,6 +35,9 @@ local function EnemyOwner()
 end
 
 local function SameOwner(value, owner)
+    if WBF.Format.IsSecret(value) then
+        return false
+    end
     if value == owner then
         return true
     end

@@ -141,6 +141,18 @@ local function ShowCopyDialog(titleText, value)
         done:SetScript("OnClick", function() dialog:Hide() end)
 
         copyDialog = dialog
+        local listed = false
+        if UISpecialFrames then
+            for index = 1, #UISpecialFrames do
+                if UISpecialFrames[index] == "WarbandFYICopyDialog" then
+                    listed = true
+                    break
+                end
+            end
+            if not listed then
+                table.insert(UISpecialFrames, "WarbandFYICopyDialog")
+            end
+        end
     end
     copyDialog.Title:SetText(titleText or "Copy")
     copyDialog.Edit:SetText(value)
@@ -444,6 +456,12 @@ function WBF.UI.Settings.Refresh()
     for index = 1, #timeoutButtons do
         local button = timeoutButtons[index]
         PaintTimeout(button, button.seconds == selected)
+    end
+end
+
+function WBF.UI.Settings.HideCopy()
+    if copyDialog then
+        copyDialog:Hide()
     end
 end
 

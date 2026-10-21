@@ -490,6 +490,14 @@ local function Commit()
             fail("Couldn't rename that section.")
             return
         end
+    elseif kind == "list-rename" then
+        local blockId = composer.blockId
+        composer = nil
+        if not WBF.Notebook.RenamePetLevelList(blockId, text) then
+            composer = { kind = "list-rename", blockId = blockId, draft = text }
+            fail("Couldn't rename that list.")
+            return
+        end
     elseif kind == "text-new" or kind == "check-new" then
         local pageId = composer.pageId
         local sectionId = composer.sectionId
@@ -564,6 +572,8 @@ local function BlockDeleteLabel(block)
     elseif block.type == "resource" then
         local view = WBF.Resources and WBF.Resources.NotebookView and WBF.Resources.NotebookView(block.resourceKey) or nil
         title = (view and view.name) or block.resourceKey
+    elseif block.type == "pet_level_list" then
+        title = block.title
     end
     return WBF.Notebook.DeleteLabel(block.type, title)
 end
@@ -825,6 +835,9 @@ OpenBlockMenu = function(blockId, anchor)
             Begin({ kind = "item-new", blockId = blockId, draft = "" }, false)
         end)
     elseif block.type == "pet_level_list" then
+        add("Rename", function()
+            Begin({ kind = "list-rename", blockId = blockId, draft = block.title or "" }, false)
+        end)
         add("Add pet", function()
             if WBF.UI.NotebookPets then WBF.UI.NotebookPets.Open(block.id) end
         end)
@@ -948,8 +961,14 @@ OpenAddMenu = function(anchor, sectionId)
             label = "Pet Level List",
             detail = "Live levels from your Pet Journal",
             action = function()
-                local block = WBF.Notebook.AddPetLevelList(sectionId, "Pets to Level")
-                if block and WBF.UI.NotebookPets then
+                HideMenu()
+                local targetSection = sectionId
+                if not targetSection then
+                    local section = WBF.Notebook.CreateSection(pageId, "Notes")
+                    targetSection = section and section.id or nil
+                end
+                local block = targetSection and WBF.Notebook.AddPetLevelList(targetSection, "Pets to Level") or nil
+                if block and WBF.UI.NotebookPets and WBF.UI.NotebookPets.Open then
                     WBF.UI.NotebookPets.Open(block.id)
                 end
             end,
@@ -2873,6 +2892,9 @@ local function RenderPage(page, width)
                 if composer and composer.kind == "text-edit" and composer.blockId == block.id then
                     local nextY = ShowAreaEditor(composer.draft or "", px, colY[col], drawW)
                     colY[col] = nextY + gap
+                elseif composer and composer.kind == "list-rename" and composer.blockId == block.id then
+                    local nextY = ShowLineEditor(composer.draft or block.title or "", "List title", 80, px, colY[col], drawW)
+                    colY[col] = nextY + gap
                 else
                     local ok, height = pcall(DrawBlock, block, px, colY[col], drawW)
                     if not ok then
@@ -2950,6 +2972,17 @@ function WBF.UI.Notebook.Render(width)
     end
     if selectedPage and not WBF.Notebook.GetPage(selectedPage) then
         selectedPage = nil
+    end
+    if composer then
+        local gone = (composer.pageId and not WBF.Notebook.GetPage(composer.pageId))
+            or (composer.sectionId and not WBF.Notebook.GetSection(composer.sectionId))
+            or (composer.blockId and not WBF.Notebook.GetBlock(composer.blockId))
+            or (composer.noteId and not WBF.Notebook.GetNote(composer.noteId))
+            or (composer.itemId and composer.blockId and WBF.Notebook.GetChecklistItem and not WBF.Notebook.GetChecklistItem(composer.blockId, composer.itemId))
+        if gone then
+            composer = nil
+            notice = nil
+        end
     end
     if not selectedPage and WBF.UI.NotebookAdd and WBF.UI.NotebookAdd.Close then
         WBF.UI.NotebookAdd.Close()

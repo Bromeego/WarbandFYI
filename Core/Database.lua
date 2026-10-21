@@ -11,6 +11,8 @@ local MAX_RETENTION_DAYS = 3650
 
 -- Permanent keys stay boolean true. Transient keys may be a unix timestamp
 -- so retention can drop them. Unknown booleans are kept.
+-- Collection identities stay for good: dropping "mount:123" would let the
+-- same mount be recorded again the next time the client announces it.
 local PERMANENT_DEDUPE = {
     mount = true,
     pet = true,
@@ -864,9 +866,12 @@ local function ApplyMigrations(db)
     -- intentionally outside WarbandFYI_DB so migration code cannot mutate the
     -- safety copy while upgrading the live database.
     if version < CURRENT_SCHEMA_VERSION then
+        -- A step that failed on an earlier login leaves a partly upgraded db.
+        -- Keep the older snapshot rather than replacing it with that state.
         local shouldBackup = type(WarbandFYI_Backup) ~= "table"
             or WarbandFYI_Backup.targetSchema ~= CURRENT_SCHEMA_VERSION
-            or WarbandFYI_Backup.fromSchema ~= version
+            or type(WarbandFYI_Backup.fromSchema) ~= "number"
+            or WarbandFYI_Backup.fromSchema > version
         if shouldBackup then
             WarbandFYI_Backup = {
                 createdAt = WBF.Time and WBF.Time.Now and WBF.Time.Now() or time(),
@@ -926,6 +931,33 @@ function WBF.Database.Init()
     end
     db.nextIds.session = db.nextIds.session or 1
     db.nextIds.event = db.nextIds.event or 1
+    local function highestId(list)
+        local highest = 0
+        if type(list) ~= "table" then
+            return highest
+        end
+        for index = 1, #list do
+            local row = list[index]
+            local id = type(row) == "table" and tonumber(row.id) or nil
+            if id and id > highest then
+                highest = id
+            end
+        end
+        return highest
+    end
+    local function raise(field, highest)
+        local current = math.floor(tonumber(db.nextIds[field]) or 1)
+        if current < 1 then
+            current = 1
+        end
+        if highest >= current then
+            db.nextIds[field] = math.floor(highest) + 1
+        else
+            db.nextIds[field] = current
+        end
+    end
+    raise("session", highestId(db.sessions))
+    raise("event", highestId(db.events))
 
     if type(db.sessions) ~= "table" then
         db.sessions = {}

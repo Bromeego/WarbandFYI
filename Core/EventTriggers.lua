@@ -213,9 +213,12 @@ local function Stamp(calendarTime)
     local now = (type(GetServerTime) == "function" and GetServerTime())
         or (type(time) == "function" and time())
     if type(now) ~= "number" then return nil end
-    -- CalendarTime has minute resolution. Anchor at the current minute; the
-    -- sub-minute difference is intentionally bounded to less than 60 seconds.
-    return now + targetSeconds - realmSeconds
+    -- CalendarTime has minute resolution, so now - realmSeconds carries 0-59
+    -- stray seconds. Occurrence keys embed the exact stamp, so snap the offset
+    -- to the 15-minute grid every realm timezone uses; the same holiday must
+    -- produce the same stamp on every scan and reload.
+    local offset = math.floor((now - realmSeconds) / 900 + 0.5) * 900
+    return targetSeconds + offset
 end
 
 local function Textures()
@@ -239,6 +242,29 @@ local function RememberTexture(texture, eventKey)
         return
     end
     map[tostring(texture)] = eventKey
+    local count = 0
+    for textureText, key in pairs(map) do
+        if not ByKey(key) then
+            map[textureText] = nil
+        else
+            count = count + 1
+        end
+    end
+    local keep = tostring(texture)
+    while count > 32 do
+        local dropped = nil
+        for textureText in pairs(map) do
+            if textureText ~= keep then
+                dropped = textureText
+                break
+            end
+        end
+        if not dropped then
+            break
+        end
+        map[dropped] = nil
+        count = count - 1
+    end
 end
 
 local function TextureKey(texture)

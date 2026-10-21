@@ -7,21 +7,43 @@ function WBF.Time.Now()
     return time()
 end
 
-function WBF.Time.StartOfDay(now)
-    local parts = date("*t", now or WBF.Time.Now())
+-- date("*t") copies the current moment's daylight-saving flag. Leaving that
+-- flag set while asking for another day's midnight shifts the result by an
+-- hour across a DST change. Clear it, then step back onto midnight if the
+-- guess still landed an hour off.
+local function AtMidnight(parts)
+    if type(parts) ~= "table" then
+        return nil
+    end
     parts.hour = 0
     parts.min = 0
     parts.sec = 0
-    return time(parts)
+    parts.isdst = nil
+    local stamp = time(parts)
+    if type(stamp) ~= "number" then
+        return stamp
+    end
+    local check = date("*t", stamp)
+    if type(check) ~= "table" or check.hour == 0 then
+        return stamp
+    end
+    if check.hour == 23 then
+        return stamp + 3600
+    end
+    if check.hour == 1 then
+        return stamp - 3600
+    end
+    return stamp
+end
+
+function WBF.Time.StartOfDay(now)
+    return AtMidnight(date("*t", now or WBF.Time.Now()))
 end
 
 function WBF.Time.StartOfMonth(now)
     local parts = date("*t", now or WBF.Time.Now())
     parts.day = 1
-    parts.hour = 0
-    parts.min = 0
-    parts.sec = 0
-    return time(parts)
+    return AtMidnight(parts)
 end
 
 -- Calendar week, Monday 00:00 local time. This is a journal week, not a raid reset.
@@ -29,10 +51,7 @@ function WBF.Time.StartOfWeek(now)
     local parts = date("*t", now or WBF.Time.Now())
     local daysSinceMonday = (parts.wday + 5) % 7
     parts.day = parts.day - daysSinceMonday
-    parts.hour = 0
-    parts.min = 0
-    parts.sec = 0
-    return time(parts)
+    return AtMidnight(parts)
 end
 
 function WBF.Time.Clock(timestamp)
@@ -74,13 +93,10 @@ function WBF.Time.AddMonths(year, month, delta)
 end
 
 function WBF.Time.MonthStart(year, month)
-    return time({
+    return AtMidnight({
         year = year,
         month = month,
         day = 1,
-        hour = 0,
-        min = 0,
-        sec = 0,
     })
 end
 

@@ -88,13 +88,10 @@ The repository contains the addon source directly at its root:
 Run the current regression tests from the repository root with Lua 5.1:
 
 ```sh
-lua tests/PetSessionProgressTest.lua
-lua tests/ProfessionPetTest.lua
-lua tests/CollectionHuntsTest.lua
-lua tests/NotebookPetsTest.lua
+lua tests/RunAll.lua
 git diff --check
 ```
 
-These tests cover pet session progression, pet/profession aggregation, collection-hunt lockouts, and Notebook pet identity, persistence, progress and picker interactions. They do not replace in-game checks of rendering, game APIs or other features. For Pet Level Lists, check two copies of one species, level one to 25, reload, cage one, page through picker results, and open the same list in Notebook, Sheet and an FYI reminder.
+`RunAll.lua` runs each test file in its own process and lists any that fail; run a single file such as `lua tests/NotebookPetsTest.lua` to see its individual checks. The tests cover the database and its migrations, sessions and month history, gold, currency and resource tracking, quests and world activity, pets and professions, collection hunts, and the Notebook, Sheet and FYI reminders. They do not replace in-game checks of rendering, game APIs or other features. For Pet Level Lists, check two copies of one species, level one to 25, reload, cage one, page through picker results, and open the same list in Notebook, Sheet and an FYI reminder.
 
 Add a short entry under **Unreleased** in [CHANGELOG.md](../CHANGELOG.md) for each notable change. Use Added, Changed, Fixed or Removed as appropriate. When publishing a release, move those entries under its actual version and release date, and update the addon version in the TOC. Git commits retain the finer implementation history.

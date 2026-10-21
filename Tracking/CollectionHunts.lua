@@ -65,6 +65,11 @@ function Hunts.MountSourceKey(mountID)
     end
 end
 
+local function ItemName(itemID)
+    local getter = (C_Item and C_Item.GetItemInfo) or GetItemInfo
+    return WBF.Format.PlainString((WBF.Format.SafeCall(getter, itemID)))
+end
+
 local function Store()
     local db = WBF.Database.Get()
     if type(db.collectionHunts) ~= "table" then db.collectionHunts = {} end
@@ -98,8 +103,8 @@ local function Store()
             if type(target.mountID) == "number" and Hunts.Mount(target.mountID) then
                 local mount = Hunts.Mount(target.mountID)
                 target.title, target.mountSpellID, target.mountIcon = mount.name, mount.spellID, mount.icon
-            elseif type(target.itemID) == "number" and GetItemInfo then
-                local name = GetItemInfo(target.itemID)
+            elseif type(target.itemID) == "number" then
+                local name = ItemName(target.itemID)
                 if name then target.title = name end
             elseif type(target.achievementID) == "number" and GetAchievementInfo then
                 local _, name = GetAchievementInfo(target.achievementID)
@@ -208,8 +213,7 @@ function Hunts.AddTarget(link, sourceKey)
             if GetAchievementInfo then local achievementID, name = GetAchievementInfo(id); title = name end
             if type(title) ~= "string" or title == "" then title = "Achievement #" .. id end
         else
-            title = GetItemInfo and GetItemInfo(id) or nil
-            if type(title) ~= "string" or title == "" then title = "Item #" .. id end
+            title = ItemName(id) or ("Item #" .. id)
         end
         local knownMount = kind == "item" and Hunts.Preview(link)
         local journalMount = kind == "mount" and Hunts.Mount(id)

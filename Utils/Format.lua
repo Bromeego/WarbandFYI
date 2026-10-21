@@ -363,6 +363,13 @@ function WBF.Format.CountLabel(count, singular, plural)
 end
 
 function WBF.Format.ActivityLine(counts, gold)
+    local source = type(counts) == "table" and counts or {}
+    counts = setmetatable({}, {
+        __index = function(_, key)
+            local value = source[key]
+            return type(value) == "number" and value or 0
+        end,
+    })
     local parts = {}
     local function add(text)
         parts[#parts + 1] = text

@@ -882,7 +882,7 @@ local function TilesFor(summary)
             color = GoldColor(summary.goldNet),
             fallback = "Interface\\MoneyFrame\\UI-GoldIcon",
             tooltip = "Gold gained or spent during this period, added across characters.",
-            open = "gold",
+            open = "goldTrend",
         })
     end
     local resources = ResourceWidgets(summary)

@@ -636,6 +636,7 @@ function WBF.Notebook.DeleteLabel(kind, title)
         text = "Delete this note?",
         note = "Delete this note?",
         checklist = "Delete this checklist?",
+        pet_level_list = "Delete this pet list?",
         achievement = "Delete this achievement?",
         waypoint = "Delete this waypoint?",
         resource = "Delete this resource?",
@@ -986,6 +987,23 @@ function WBF.Notebook.AddPetLevelList(sectionId, title)
     })
 end
 
+function WBF.Notebook.RenamePetLevelList(blockId, title)
+    local block = WBF.Notebook.GetBlock(blockId)
+    if not block or block.type ~= "pet_level_list" then
+        return nil
+    end
+    title = Clip(title, 80)
+    if title == "" then
+        return nil
+    end
+    if block.title == title then
+        return block
+    end
+    block.title = title
+    TouchBlock(block)
+    return Save(block)
+end
+
 function WBF.Notebook.AddPetToList(blockId, petID)
     local block = WBF.Notebook.GetBlock(blockId)
     if not block or block.type ~= "pet_level_list" then return false end
@@ -1067,6 +1085,13 @@ function WBF.Notebook.DuplicateBlock(id)
                         kind = "item",
                         blockId = item.progress.blockId,
                         itemID = item.progress.itemID,
+                        target = item.progress.target,
+                    }
+                elseif type(item.progress) == "table" and item.progress.kind == "resource" then
+                    copy.progress = {
+                        kind = "resource",
+                        blockId = item.progress.blockId,
+                        resourceKey = item.progress.resourceKey,
                         target = item.progress.target,
                     }
                 end

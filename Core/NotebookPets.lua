@@ -32,7 +32,7 @@ function P.Read(petID)
         end
     end
     if type(info) ~= "table" or not info.speciesID then return nil end
-    local level = tonumber(info.petLevel)
+    local level = WBF.Format.AsNumber(info.petLevel)
     if level and (level ~= level or level < 1 or level > 25) then level = nil end
     return { petID = petID, speciesID = info.speciesID,
         name = info.customName and info.customName ~= "" and info.customName or info.name,

@@ -456,7 +456,8 @@ local function MatchesActivityFilter(event, filterKey)
     elseif filterKey == "level25" then
         return meta.kind == "level" and meta.reached25 == true
     elseif filterKey == "newPets" then
-        return (meta.kind == "capture" and meta.newSpecies == true) or (IsPetEvent(event) and meta.captured ~= true)
+        return (meta.kind == "capture" and meta.newSpecies == true)
+            or (IsPetEvent(event) and meta.newSpecies == true)
     end
     return true
 end

@@ -8,13 +8,25 @@ local handlers = {}
 local started = false
 local loggedIn = false
 
+-- Runs inside xpcall while the failing stack is still live, so the error
+-- handler (or BugSack) can capture a full traceback.
+local function OnError(err)
+    local handler = geterrorhandler and geterrorhandler() or nil
+    if type(handler) == "function" then
+        handler(err)
+    end
+    return err
+end
+
 local function Dispatch(event, ...)
     local list = handlers[event]
     if not list then
         return
     end
+    -- One module's error must not stop the others listening to the same event.
+    -- WoW's xpcall forwards extra arguments to the callback.
     for index = 1, #list do
-        list[index](...)
+        xpcall(list[index], OnError, ...)
     end
 end
 
@@ -216,10 +228,10 @@ local function Slash(message)
     if WBF.CollectionHunts and WBF.CollectionHunts.Slash(raw) then return end
     local text = raw:lower()
     local searchText
-    if raw:match("^[Ss]earch$") then
+    if text == "search" then
         searchText = ""
-    else
-        searchText = raw:match("^[Ss]earch%s+(.*)$")
+    elseif text:match("^search%s") then
+        searchText = raw:match("^%a+%s+(.*)$")
     end
     if searchText and WBF.UI and WBF.UI.Search and WBF.UI.Search.Focus then
         if WBF.UI.frame and not WBF.UI.frame:IsShown() then

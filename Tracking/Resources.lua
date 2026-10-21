@@ -603,7 +603,7 @@ local function CurrentGUID()
 end
 
 local function SameEnum(value, enumValue)
-    if value == nil or enumValue == nil then
+    if WBF.Format.IsSecret(value) or value == nil or enumValue == nil then
         return false
     end
     if value == enumValue then
@@ -1063,6 +1063,11 @@ local function Claim(key, balance, delta, classification)
         return false
     end
     recentClaims[id] = now
+    for key, at in pairs(recentClaims) do
+        if type(at) ~= "number" or now - at >= 3 then
+            recentClaims[key] = nil
+        end
+    end
     return true
 end
 
@@ -1868,6 +1873,14 @@ local function KeepSystemReading(definition, quantity, guid)
 end
 
 local function NoteCurrency(definition, quantity, change, gainSource, destroyReason, guidOverride)
+    -- A secret source still means the update carried one. False keeps it
+    -- "sourced" without matching any enum, and never throws on comparison.
+    if WBF.Format.IsSecret(gainSource) then
+        gainSource = false
+    end
+    if WBF.Format.IsSecret(destroyReason) then
+        destroyReason = false
+    end
     local guid = (type(guidOverride) == "string" and guidOverride ~= "") and guidOverride or CurrentGUID()
     if not guid or not definition or definition.suppressed then
         return
@@ -3395,6 +3408,9 @@ local function IngestTransferLog()
     if type(store.transferSeen) ~= "table" then
         store.transferSeen = {}
     end
+    -- transferSeen forgets ids past this cutoff, so anything older is left
+    -- alone; otherwise a long-lived log entry would be recorded twice.
+    local cutoff = WBF.Time.Now() - (90 * 86400)
     for index = 1, #txns do
         local txn = txns[index]
         local definition = FindCurrency(txn.currencyType)
@@ -3411,8 +3427,8 @@ local function IngestTransferLog()
             if not store.transferSeen[id] then
                 local balance = StateFor(definition.key)
                 local started = balance.baselinedAt
-                if started and stamp >= started - 120 then
-                    store.transferSeen[id] = true
+                if started and stamp >= started - 120 and stamp >= cutoff then
+                    store.transferSeen[id] = stamp
                     local already = RecentTransferCovers(definition.key, txn.sourceCharacterGUID, -qty)
                         or RecentTransferCovers(definition.key, txn.destinationCharacterGUID, qty)
                     if not already then
@@ -3424,6 +3440,11 @@ local function IngestTransferLog()
                     end
                 end
             end
+        end
+    end
+    for key, value in pairs(store.transferSeen) do
+        if type(value) == "number" and value < cutoff then
+            store.transferSeen[key] = nil
         end
     end
 end

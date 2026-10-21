@@ -78,6 +78,85 @@ local function MoveMapKey(map, fromKey, toKey)
     map[fromKey] = nil
 end
 
+local function AddNumber(map, key, value)
+    if type(value) == "number" then
+        map[key] = (type(map[key]) == "number" and map[key] or 0) + value
+    end
+end
+
+local function MergeLifetimeRow(into, from)
+    AddNumber(into, "playedSeconds", from.playedSeconds)
+    if type(from.counts) == "table" then
+        if type(into.counts) ~= "table" then
+            into.counts = {}
+        end
+        if WBF.Aggregator and WBF.Aggregator.MergeCounts then
+            WBF.Aggregator.MergeCounts(into.counts, from.counts)
+        else
+            for key, value in pairs(from.counts) do
+                AddNumber(into.counts, key, value)
+            end
+        end
+    end
+    for _, field in ipairs({ "level", "itemLevel" }) do
+        local at = from[field .. "At"]
+        local current = into[field .. "At"]
+        if type(at) == "number" and (type(current) ~= "number" or at < current) then
+            into[field .. "At"] = at
+            into[field] = from[field]
+        end
+    end
+    local professions = type(from.crafting) == "table" and from.crafting.professions
+    if type(professions) == "table" then
+        if type(into.crafting) ~= "table" then
+            into.crafting = {}
+        end
+        if type(into.crafting.professions) ~= "table" then
+            into.crafting.professions = {}
+        end
+        for name, row in pairs(professions) do
+            if type(row) == "table" then
+                local target = into.crafting.professions[name]
+                if type(target) ~= "table" then
+                    target = {}
+                    into.crafting.professions[name] = target
+                end
+                AddNumber(target, "crafts", row.crafts)
+                AddNumber(target, "items", row.items)
+                AddNumber(target, "concentrationSpent", row.concentrationSpent)
+            end
+        end
+    end
+end
+
+-- Retention folds pruned history into db.lifetime under the key the rows had,
+-- so an adopted legacy key must carry its all-time totals across as well.
+local function MoveLifetime(db, fromKey, toGuid)
+    local life = db.lifetime
+    if type(life) ~= "table" then
+        return
+    end
+    local characters = life.characters
+    if type(characters) == "table" and type(characters[fromKey]) == "table" then
+        if type(characters[toGuid]) ~= "table" then
+            characters[toGuid] = characters[fromKey]
+        else
+            MergeLifetimeRow(characters[toGuid], characters[fromKey])
+        end
+        characters[fromKey] = nil
+    end
+    local gold = life.gold
+    if type(gold) == "table" then
+        for _, field in ipairs({ "byGuid", "offlineByGuid" }) do
+            local map = gold[field]
+            if type(map) == "table" and map[fromKey] ~= nil then
+                AddNumber(map, toGuid, map[fromKey])
+                map[fromKey] = nil
+            end
+        end
+    end
+end
+
 local function RewriteGuid(db, fromKey, toGuid)
     if not fromKey or fromKey == toGuid then
         return
@@ -139,6 +218,7 @@ local function RewriteGuid(db, fromKey, toGuid)
             end
         end
     end
+    MoveLifetime(db, fromKey, toGuid)
     if WBF.Aggregator and WBF.Aggregator.MarkDirty then
         WBF.Aggregator.MarkDirty()
     end

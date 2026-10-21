@@ -865,7 +865,10 @@ local function BuildSummary(view, offset, forcedCtx, forceRaw)
     if not monthCtx and view == "month" and WBF.Time.MonthBounds and WBF.Aggregator.MonthContext then
         monthCtx = WBF.Aggregator.MonthContext(offset)
     end
-    if monthCtx and monthCtx.closed and not forceRaw and WBF.MonthHistory and WBF.MonthHistory.CoversRaw and not WBF.MonthHistory.CoversRaw(monthCtx.startAt) then
+    -- A month that closed while the player was away for longer than retention
+    -- never got a rollup; its retained tail beats an empty month.
+    if monthCtx and monthCtx.closed and not forceRaw and WBF.MonthHistory and WBF.MonthHistory.CoversRaw and not WBF.MonthHistory.CoversRaw(monthCtx.startAt)
+        and (not WBF.MonthHistory.Get or WBF.MonthHistory.Get(monthCtx.key) or not WBF.MonthHistory.HasRecords or not WBF.MonthHistory.HasRecords(monthCtx.startAt, monthCtx.endAt)) then
         return WBF.MonthHistory.SummaryFor(monthCtx)
     end
     local startAt, endAt, label, emptyReason
