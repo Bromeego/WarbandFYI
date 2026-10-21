@@ -61,6 +61,7 @@ WBF.Characters = {
 }
 WBF.UI = {}
 
+loadAddon("Utils/Format.lua", WBF)
 loadAddon("Tracking/CollectionSources.lua", WBF)
 loadAddon("Tracking/CollectionHunts.lua", WBF)
 

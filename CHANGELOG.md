@@ -10,10 +10,25 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 - Individual-pet Notebook level lists with saved GUIDs, live level-25 completion, a paged picker, floating Sheet support and FYI progress. Older species entries remain available for choosing a specific copy.
 - A concise addon README and a separate guide covering usage, tracking behaviour, saved data and development checks.
 - This changelog to track notable changes alongside the Git commit history.
+- `lua tests/RunAll.lua` to run every regression test from the repository root.
 - Regression tests for pet session progression and existing pet/profession aggregation behaviour.
 
 ### Fixed
 
+- Recurring event FYIs keep the same occurrence across a reload, so a completed or hidden holiday checklist no longer comes back a few seconds later.
+- Dashboard **Net Gold** opens the gold chart for the period you are viewing.
+- Pet Level Lists can be renamed from the block menu.
+- Day, week, and month boundaries stay on local midnight across a daylight-saving change.
+- Restored session and event rows cannot reuse an id the counter had already passed.
+- Learned holiday icons are capped, so that cache cannot grow without limit.
+- Adopting a name-and-realm character record now carries its lifetime totals and gold with it.
+- A finished month that was never rolled up still shows its remaining days after retention, instead of an empty month.
+- `/wbfyi search` matches any capitalisation of the command.
+- Search no longer covers the window close button, and the copy dialog closes with Esc or when the main window hides.
+- Typing in a search box during combat no longer calls a protected keyboard API.
+- Pet Battles **New Pets** only lists new-species captures.
+- Duplicating a checklist keeps a linked resource goal.
+- Adding a Pet Level List from an empty Notebook page now creates a section and opens the pet picker.
 - Collection Hunts no longer treats a Raid Finder Ji-Kun kill as a finished Clutch of Ji-Kun attempt. Normal and Heroic lockouts still count.
 - `/wbfyi hunt` only handles the hunt command, so words that merely start with "hunt" open the window again.
 - `/wbfyi search` only handles the search command, so a word such as "searching" is not treated as a query.
@@ -24,6 +39,7 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 
 ### Removed
 
+- The unused Plans window. Notes and plans live in the Notebook, and saved Plans data still migrates into it.
 - The outdated `COLLECTION-HUNTS-1K-NOTES.txt` and `COLLECTION-HUNTS-README.txt` development notes.
 
 ## Repository baseline — 2026-10-16

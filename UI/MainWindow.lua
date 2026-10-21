@@ -125,6 +125,7 @@ function WBF.UI.MainWindow.Create()
     local content = CreateFrame("Frame", nil, frame)
     content:SetPoint("TOPLEFT", nav, "TOPRIGHT", 12, 0)
     content:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -14, 18)
+    frame.Content = content
 
     local buttons = CreateFrame("Frame", nil, content)
     buttons:SetPoint("BOTTOMLEFT", content, "BOTTOMLEFT", 0, 0)
@@ -784,6 +785,9 @@ function WBF.UI.MainWindow.Create()
         end
         if WBF.UI.HideCollectionPreview then
             WBF.UI.HideCollectionPreview()
+        end
+        if WBF.UI.Settings and WBF.UI.Settings.HideCopy then
+            WBF.UI.Settings.HideCopy()
         end
     end)
 

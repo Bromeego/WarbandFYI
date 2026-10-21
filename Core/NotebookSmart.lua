@@ -280,9 +280,9 @@ local function ReadXY(position)
     end
     local x, y = position.x, position.y
     if type(x) ~= "number" and type(position.GetXY) == "function" then
-        x, y = position:GetXY()
+        x, y = WBF.Format.SafeCall(position.GetXY, position)
     end
-    if type(x) ~= "number" or type(y) ~= "number" then
+    if WBF.Format.IsSecret(x) or WBF.Format.IsSecret(y) or type(x) ~= "number" or type(y) ~= "number" then
         return nil, nil
     end
     return x, y

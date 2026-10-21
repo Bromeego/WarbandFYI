@@ -195,7 +195,7 @@ local function MapName(mapID)
     if not mapID or not C_ChallengeMode or not C_ChallengeMode.GetMapUIInfo then
         return nil
     end
-    local info = C_ChallengeMode.GetMapUIInfo(mapID)
+    local info = WBF.Format.SafeCall(C_ChallengeMode.GetMapUIInfo, mapID)
     if type(info) == "table" then
         return info.name
     end

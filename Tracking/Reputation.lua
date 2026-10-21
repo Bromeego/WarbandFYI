@@ -548,14 +548,14 @@ function WBF.Reputation.Register(bus)
     end)
 
     bus:On("COMBAT_TEXT_UPDATE", function(combatType)
-        if combatType ~= "FACTION" then
+        if WBF.Format.IsSecret(combatType) or combatType ~= "FACTION" then
             return
         end
         local faction, amount
         if C_CombatText and C_CombatText.GetCurrentEventInfo then
-            faction, amount = C_CombatText.GetCurrentEventInfo()
+            faction, amount = WBF.Format.SafeCall(C_CombatText.GetCurrentEventInfo)
         elseif GetCurrentCombatTextEventInfo then
-            faction, amount = GetCurrentCombatTextEventInfo()
+            faction, amount = WBF.Format.SafeCall(GetCurrentCombatTextEventInfo)
         end
         if issecretvalue and ((faction and issecretvalue(faction)) or (amount and issecretvalue(amount))) then
             return

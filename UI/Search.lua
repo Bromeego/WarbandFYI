@@ -417,7 +417,12 @@ function WBF.UI.Search.Attach(window, header)
     end)
 
     catcher = CreateFrame("Button", nil, window)
-    catcher:SetAllPoints(window)
+    if window.Content then
+        catcher:SetAllPoints(window.Content)
+    else
+        catcher:SetPoint("TOPLEFT", window, "TOPLEFT", 0, -64)
+        catcher:SetPoint("BOTTOMRIGHT", window, "BOTTOMRIGHT", 0, 0)
+    end
     catcher:SetFrameLevel(window:GetFrameLevel() + 28)
     catcher:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     catcher:SetScript("OnClick", function()

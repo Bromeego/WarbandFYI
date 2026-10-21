@@ -232,8 +232,11 @@ function WBF.UI.KeepKeyboard(edit)
     end
     edit._wbfKeys = true
     local function hold(self)
+        if InCombatLockdown and InCombatLockdown() then
+            return
+        end
         if self.SetPropagateKeyboardInput then
-            self:SetPropagateKeyboardInput(false)
+            pcall(self.SetPropagateKeyboardInput, self, false)
         end
     end
     if edit.HookScript then

@@ -1,6 +1,7 @@
 -- Run from addon root: lua tests/NotebookPetsTest.lua
 local WBF = { Time = { Now = function() return 100 end } }
 local function load(path) assert(loadfile(path))("WarbandFYI", WBF) end
+load("Utils/Format.lua")
 load("Core/Database.lua")
 WarbandFYI_DB = { nextIds = {}, config = {} }
 load("Core/Notebook.lua")
@@ -29,6 +30,9 @@ C_PetJournal = {
 local page = N.CreatePage("Pets")
 local section = N.CreateSection(page.id, "Level goals")
 local block = N.AddPetLevelList(section.id)
+eq(N.RenamePetLevelList(block.id, "  "), nil)
+eq(N.RenamePetLevelList(block.id, "Safari") ~= nil, true)
+eq(N.GetBlock(block.id).title, "Safari")
 eq(N.AddPetToList(block.id, "BattlePet-000001"), true)
 eq(N.AddPetToList(block.id, "BattlePet-000001"), false)
 eq(N.AddPetToList(block.id, "BattlePet-000002"), true)
