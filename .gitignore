@@ -2,3 +2,6 @@
 lua-setup.exe
 __pycache__/
 *.pyc
+
+# Local design mockups. Not part of the addon.
+DesignReferences/
