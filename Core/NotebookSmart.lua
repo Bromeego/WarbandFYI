@@ -653,6 +653,14 @@ function WBF.NotebookSmart.Describe(block)
             if (counts.accountBank or 0) > 0 then
                 countText = countText .. "  ·  Warband bank " .. tostring(counts.accountBank)
             end
+            -- Tracked items (event tokens) know what every alt holds, so the
+            -- warband total covers more than this character plus the bank.
+            local tracked = WBF.Resources and WBF.Resources.ByItemID and WBF.Resources.ByItemID(id) or nil
+            local view = tracked and tracked.key and WBF.Resources.NotebookView and WBF.Resources.NotebookView(tracked.key) or nil
+            local total = math.max(view and tonumber(view.amount) or 0, counts.combined or 0)
+            if total > (counts.character or 0) then
+                countText = countText .. "  ·  Total " .. tostring(total)
+            end
             detail = countText
         end
     elseif kind == "spell" and id then

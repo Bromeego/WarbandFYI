@@ -4471,6 +4471,14 @@ function WBF.Resources.ByCurrencyID(currencyID)
     return FindCurrency(currencyID)
 end
 
+function WBF.Resources.ByItemID(itemID)
+    itemID = WBF.Format.AsNumber(itemID)
+    if not itemID then
+        return nil
+    end
+    return byIdentity["item:" .. itemID]
+end
+
 function WBF.Resources.NotebookView(key)
     local definition = type(key) == "string" and registry[key] or nil
     if not definition or definition.suppressed then

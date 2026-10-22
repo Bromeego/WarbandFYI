@@ -281,6 +281,24 @@ end
 WBF.Characters.Update()
 local ticketView = WBF.Resources.NotebookView("darkmoon_ticket")
 check("resource view separates character and warband totals", ticketView and ticketView.character == 12 and ticketView.amount == 17 and ticketView.accountWide == false)
+WarbandFYI_DB.resources.balances.tricky_treat = {
+    characters = { ["Player-1-A"] = 5, ["Player-9-B"] = 155 },
+    account = 23,
+}
+local savedItem = C_Item
+C_Item = {
+    GetItemCount = function(itemID, _, _, _, includeAccountBank)
+        if itemID ~= 33226 then
+            return 0
+        end
+        return includeAccountBank and 28 or 5
+    end,
+}
+local treat = WBF.NotebookSmart.Describe({ refType = "item", refID = 33226 })
+check("tracked item line shows the warband total", treat and treat.detail and treat.detail:find("You 5", 1, true) and treat.detail:find("Warband bank 23", 1, true) and treat.detail:find("Total 183", 1, true), treat and treat.detail)
+local untracked = WBF.NotebookSmart.Describe({ refType = "item", refID = 99999 })
+check("untracked item with nothing held shows no total", untracked and untracked.detail == "You 0", untracked and untracked.detail)
+C_Item = savedItem
 local foundResources = WBF.Resources.SearchNames("timewarp", 8)
 check("resource search uses the tracker names", foundResources[1] and foundResources[1].key == "timewarped_badge")
 check("unknown resource search stays empty", #WBF.Resources.SearchNames("not-a-real-currency", 8) == 0)
