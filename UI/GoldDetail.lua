@@ -51,65 +51,38 @@ local function MakeMetric(parent, heading)
     return card
 end
 
-local function LineRegion(plot)
-    if plot.CreateLine then
-        local line = plot:CreateLine(nil, "ARTWORK")
-        line:SetThickness(2.5)
-        line:SetColorTexture(WBF.UI.Colors.gold[1], WBF.UI.Colors.gold[2], WBF.UI.Colors.gold[3], 0.98)
-        line.wbfLineRegion = true
-        return line
-    end
-    local line = plot:CreateTexture(nil, "ARTWORK")
-    line:SetColorTexture(WBF.UI.Colors.gold[1], WBF.UI.Colors.gold[2], WBF.UI.Colors.gold[3], 0.98)
-    return line
-end
-
-local function PositionLine(plot, line, xA, yA, xB, yB)
-    if line.wbfLineRegion then
-        line:ClearAllPoints()
-        line:SetStartPoint("BOTTOMLEFT", plot, xA, yA)
-        line:SetEndPoint("BOTTOMLEFT", plot, xB, yB)
-        line:SetThickness(2.5)
-        line:Show()
-        return
-    end
-    local dx = xB - xA
-    local dy = yB - yA
-    local length = math.sqrt(dx * dx + dy * dy)
-    if length < 0.5 then
-        line:Hide()
-        return
-    end
-    line:ClearAllPoints()
-    line:SetSize(length, 3)
-    line:SetPoint("CENTER", plot, "BOTTOMLEFT", (xA + xB) / 2, (yA + yB) / 2)
-    line:SetRotation(math.atan2(dy, dx))
-    line:Show()
-end
-
 local function Marker(plot)
     local marker = CreateFrame("Frame", nil, plot)
     marker:SetSize(9, 9)
     marker:EnableMouse(true)
     WBF.UI.BindWheel(marker)
-    local dot = marker:CreateTexture(nil, "OVERLAY")
-    dot:SetTexture("Interface\\COMMON\\Indicator-Yellow")
-    if dot.SetDesaturated then
-        dot:SetDesaturated(true)
-    end
+    local outline = marker:CreateTexture(nil, "OVERLAY", nil, 1)
+    outline:SetTexture(WBF.UI.Media.dot)
+    outline:SetVertexColor(0.04, 0.04, 0.05, 0.95)
+    outline:SetSize(9, 9)
+    outline:SetPoint("CENTER")
+    local dot = marker:CreateTexture(nil, "OVERLAY", nil, 2)
+    dot:SetTexture(WBF.UI.Media.dot)
     dot:SetSize(6, 6)
     dot:SetPoint("CENTER")
+    marker.Outline = outline
     marker.Dot = dot
-    marker:SetScript("OnLeave", function()
+    -- Dots are invisible hover targets until pointed at, so clusters of
+    -- changes don't crowd the line.
+    outline:Hide()
+    dot:Hide()
+    marker:SetScript("OnLeave", function(self)
         if GameTooltip then
             GameTooltip:Hide()
         end
+        self.Outline:Hide()
+        self.Dot:Hide()
     end)
     return marker
 end
 
 local function HidePlot(plot)
-    for index = 1, #plot.lines do plot.lines[index]:Hide() end
+    WBF.UI.HideCurve(plot)
     for index = 1, #plot.markers do plot.markers[index]:Hide() end
     for index = 1, #plot.yLabels do plot.yLabels[index]:Hide() end
     for index = 1, #plot.xLabels do plot.xLabels[index]:Hide() end
@@ -240,28 +213,23 @@ local function DrawGraph(plot, model, width, height)
         ys[i] = yOf(points[i].value or 0)
     end
     local tangents = Tangents(xs, ys)
-    local drawn = 0
+    local pathXs, pathYs = { xs[1] }, { ys[1] }
     for i = 1, #points - 1 do
         local sx, ex = xs[i], xs[i + 1]
-        local px, py = sx, ys[i]
         local pixelSpan = ex - sx
-        local samples = math.max(3, math.min(30, math.ceil(math.max(1, pixelSpan) / 7)))
+        local samples = math.max(3, math.min(30, math.ceil(math.max(1, pixelSpan) / 4)))
         for sample = 1, samples do
             local t = sample / samples
             local nx = sx + pixelSpan * t
             local ny = Hermite(ys[i], ys[i + 1], tangents[i] or 0, tangents[i + 1] or 0, pixelSpan, t)
             local minY, maxY = math.min(ys[i], ys[i + 1]), math.max(ys[i], ys[i + 1])
             if ny < minY then ny = minY elseif ny > maxY then ny = maxY end
-            drawn = drawn + 1
-            local line = plot.lines[drawn]
-            if not line then
-                line = LineRegion(plot)
-                plot.lines[drawn] = line
-            end
-            PositionLine(plot, line, px, py, nx, ny)
-            px, py = nx, ny
+            pathXs[#pathXs + 1] = nx
+            pathYs[#pathYs + 1] = ny
         end
     end
+    -- Net gold can go negative, so the fill hangs off the zero line.
+    WBF.UI.DrawCurve(plot, pathXs, pathYs, math.max(0, math.min(height, yOf(0))))
 
     local maxMarkers = 36
     local step = math.max(1, math.ceil(#points / maxMarkers))
@@ -280,6 +248,8 @@ local function DrawGraph(plot, model, width, height)
         marker.Dot:SetVertexColor(color[1], color[2], color[3], 1)
         marker.Point = point
         marker:SetScript("OnEnter", function(self)
+            self.Outline:Show()
+            self.Dot:Show()
             if not GameTooltip then return end
             local p = self.Point
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -369,7 +339,7 @@ function WBF.UI.GoldDetail.Attach(parent)
     historyTitle:SetText("Net Gold History")
     Color(historyTitle, WBF.UI.Colors.gold)
     local plot = CreateFrame("Frame", nil, historyCard)
-    plot.lines, plot.markers, plot.yLabels, plot.xLabels, plot.grids = {}, {}, {}, {}, {}
+    plot.markers, plot.yLabels, plot.xLabels, plot.grids = {}, {}, {}, {}
     local empty = plot:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     empty:SetPoint("CENTER")
     Color(empty, WBF.UI.Colors.muted)

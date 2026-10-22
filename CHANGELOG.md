@@ -37,6 +37,10 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 - Session progression respects starting levels, unique pet IDs and session boundaries, and falls back safely when history is missing.
 - An unavailable starting level no longer produces an assumed one-level gain.
 
+### Changed
+
+- Balance History and Net Gold History draw a smooth, anti-aliased line with a soft glow and a gradient fill. Observation dots appear on hover; only the latest point stays marked.
+
 ### Removed
 
 - The unused Plans window. Notes and plans live in the Notebook, and saved Plans data still migrates into it.

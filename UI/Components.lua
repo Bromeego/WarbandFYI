@@ -1669,3 +1669,175 @@ end
 function WBF.UI.AcquireRoster(parent)
     return WBF.UI.Acquire(RosterPool(), parent)
 end
+
+-- History curves. Callers pass an already-sampled polyline in plot coordinates;
+-- this draws a soft gradient fill down to the baseline, a faint glow and a crisp
+-- core stroke. Pixel snapping is disabled so the many short, slightly rotated
+-- segments blend into one continuous line instead of a stepped, dotted one.
+local UPPER_LEFT_VERTEX, LOWER_LEFT_VERTEX, UPPER_RIGHT_VERTEX, LOWER_RIGHT_VERTEX = 1, 2, 3, 4
+
+-- Line.tga is white with feathered top/bottom rows, so a stroke drawn with it
+-- is anti-aliased; a flat colour texture leaves sloped lines stair-stepped.
+-- Dot.tga is an anti-aliased disc for chart markers.
+WBF.UI.Media = {
+    line = "Interface\\AddOns\\WarbandFYI\\Media\\Line.tga",
+    dot = "Interface\\AddOns\\WarbandFYI\\Media\\Dot.tga",
+}
+
+local function Unsnap(region)
+    if region.SetSnapToPixelGrid then
+        region:SetSnapToPixelGrid(false)
+    end
+    if region.SetTexelSnappingBias then
+        region:SetTexelSnappingBias(0)
+    end
+end
+
+local function CurvePool(plot)
+    local pool = plot.wbfCurve
+    if not pool then
+        pool = { fills = {}, glows = {}, cores = {} }
+        plot.wbfCurve = pool
+    end
+    return pool
+end
+
+local function CurveStroke(plot, list, index, thickness, alpha, subLevel, xA, yA, xB, yB)
+    local line = list[index]
+    if not line then
+        line = plot:CreateLine(nil, "ARTWORK", nil, subLevel)
+        line:SetTexture(WBF.UI.Media.line, "CLAMP", "CLAMP", "TRILINEAR")
+        Unsnap(line)
+        list[index] = line
+    end
+    local gold = WBF.UI.Colors.gold
+    line:SetVertexColor(gold[1], gold[2], gold[3], alpha)
+    line:SetThickness(thickness)
+    line:ClearAllPoints()
+    line:SetStartPoint("BOTTOMLEFT", plot, xA, yA)
+    line:SetEndPoint("BOTTOMLEFT", plot, xB, yB)
+    line:Show()
+end
+
+-- One trapezoid column between the curve and the baseline. Both ends must sit
+-- on the same side of the baseline; DrawCurve splits segments that cross it.
+local function CurveFill(plot, pool, index, xA, yA, xB, yB, base)
+    local fill = pool.fills[index]
+    if not fill then
+        fill = plot:CreateTexture(nil, "BACKGROUND", nil, 2)
+        fill:SetColorTexture(1, 1, 1, 1)
+        Unsnap(fill)
+        pool.fills[index] = fill
+    end
+    local above = yA + yB >= 2 * base
+    local edge = above and math.max(yA, yB) or math.min(yA, yB)
+    local height = math.abs(edge - base)
+    if height < 0.5 or xB - xA < 0.01 or not fill.SetVertexOffset then
+        fill:Hide()
+        return
+    end
+    for vertex = 1, 4 do
+        fill:SetVertexOffset(vertex, 0, 0)
+    end
+    local gold = WBF.UI.Colors.gold
+    local strong = CreateColor(gold[1], gold[2], gold[3], 0.2)
+    local faint = CreateColor(gold[1], gold[2], gold[3], 0)
+    fill:ClearAllPoints()
+    fill:SetPoint("BOTTOMLEFT", plot, "BOTTOMLEFT", xA, above and base or edge)
+    fill:SetSize(xB - xA, height)
+    if above then
+        fill:SetGradient("VERTICAL", faint, strong)
+        fill:SetVertexOffset(UPPER_LEFT_VERTEX, 0, yA - edge)
+        fill:SetVertexOffset(UPPER_RIGHT_VERTEX, 0, yB - edge)
+    else
+        fill:SetGradient("VERTICAL", strong, faint)
+        fill:SetVertexOffset(LOWER_LEFT_VERTEX, 0, yA - edge)
+        fill:SetVertexOffset(LOWER_RIGHT_VERTEX, 0, yB - edge)
+    end
+    fill:Show()
+end
+
+function WBF.UI.HideCurve(plot)
+    local pool = plot.wbfCurve
+    if not pool then
+        return
+    end
+    for _, list in pairs(pool) do
+        for index = 1, #list do
+            list[index]:Hide()
+        end
+    end
+end
+
+-- Douglas-Peucker: drop samples that sit within `tolerance` pixels of the
+-- straight line between their neighbours. Every joint between two stroke
+-- segments leaves a small kink, so gentle stretches read far cleaner as one
+-- long segment than as dozens of 4px ones.
+local function SimplifyPath(xs, ys, tolerance)
+    local count = #xs
+    if count <= 2 then
+        return xs, ys
+    end
+    local keep = { [1] = true, [count] = true }
+    local stack = { { 1, count } }
+    while #stack > 0 do
+        local range = table.remove(stack)
+        local first, last = range[1], range[2]
+        local ax, ay = xs[first], ys[first]
+        local dx, dy = xs[last] - ax, ys[last] - ay
+        local length = math.sqrt(dx * dx + dy * dy)
+        local worst, worstIndex = 0, nil
+        for index = first + 1, last - 1 do
+            local distance
+            if length < 0.0001 then
+                distance = math.sqrt((xs[index] - ax) ^ 2 + (ys[index] - ay) ^ 2)
+            else
+                distance = math.abs(dy * (xs[index] - ax) - dx * (ys[index] - ay)) / length
+            end
+            if distance > worst then
+                worst, worstIndex = distance, index
+            end
+        end
+        if worstIndex and worst > tolerance then
+            keep[worstIndex] = true
+            stack[#stack + 1] = { first, worstIndex }
+            stack[#stack + 1] = { worstIndex, last }
+        end
+    end
+    local outXs, outYs = {}, {}
+    for index = 1, count do
+        if keep[index] then
+            outXs[#outXs + 1] = xs[index]
+            outYs[#outYs + 1] = ys[index]
+        end
+    end
+    return outXs, outYs
+end
+
+function WBF.UI.DrawCurve(plot, xs, ys, base)
+    WBF.UI.HideCurve(plot)
+    local pool = CurvePool(plot)
+    base = base or 0
+    xs, ys = SimplifyPath(xs, ys, 0.35)
+    local fills = 0
+    local strokes = 0
+    for index = 1, #xs - 1 do
+        local xA, yA, xB, yB = xs[index], ys[index], xs[index + 1], ys[index + 1]
+        if (yA - base) * (yB - base) < 0 then
+            local crossX = xA + (xB - xA) * (base - yA) / (yB - yA)
+            fills = fills + 1
+            CurveFill(plot, pool, fills, xA, yA, crossX, base, base)
+            fills = fills + 1
+            CurveFill(plot, pool, fills, crossX, base, xB, yB, base)
+        else
+            fills = fills + 1
+            CurveFill(plot, pool, fills, xA, yA, xB, yB, base)
+        end
+        local dx, dy = xB - xA, yB - yA
+        if dx * dx + dy * dy >= 0.01 then
+            strokes = strokes + 1
+            CurveStroke(plot, pool.glows, strokes, 9, 0.16, 1, xA, yA, xB, yB)
+            CurveStroke(plot, pool.cores, strokes, 4, 1, 3, xA, yA, xB, yB)
+        end
+    end
+end

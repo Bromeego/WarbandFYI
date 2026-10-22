@@ -203,9 +203,7 @@ local function PeopleRow(parent)
 end
 
 local function HideGraphics(plot)
-    for index = 1, #plot.lines do
-        plot.lines[index]:Hide()
-    end
+    WBF.UI.HideCurve(plot)
     for index = 1, #plot.markers do
         plot.markers[index]:Hide()
     end
@@ -225,42 +223,6 @@ local function HideGraphics(plot)
     if plot.first then
         plot.first:Hide()
     end
-end
-
-local function LineRegion(plot)
-    if plot.CreateLine then
-        local line = plot:CreateLine(nil, "ARTWORK")
-        line:SetThickness(2.5)
-        line:SetColorTexture(WBF.UI.Colors.gold[1], WBF.UI.Colors.gold[2], WBF.UI.Colors.gold[3], 0.96)
-        line.wbfLineRegion = true
-        return line
-    end
-    local line = plot:CreateTexture(nil, "ARTWORK")
-    line:SetColorTexture(WBF.UI.Colors.gold[1], WBF.UI.Colors.gold[2], WBF.UI.Colors.gold[3], 0.96)
-    return line
-end
-
-local function PositionLine(plot, line, xA, yA, xB, yB)
-    if line.wbfLineRegion then
-        line:ClearAllPoints()
-        line:SetStartPoint("BOTTOMLEFT", plot, xA, yA)
-        line:SetEndPoint("BOTTOMLEFT", plot, xB, yB)
-        line:SetThickness(2.5)
-        line:Show()
-        return
-    end
-    local dx = xB - xA
-    local dy = yB - yA
-    local length = math.sqrt(dx * dx + dy * dy)
-    if length < 0.5 then
-        line:Hide()
-        return
-    end
-    line:ClearAllPoints()
-    line:SetSize(length, 3)
-    line:SetPoint("CENTER", plot, "BOTTOMLEFT", (xA + xB) / 2, (yA + yB) / 2)
-    line:SetRotation(math.atan2(dy, dx))
-    line:Show()
 end
 
 -- The underlying resource history remains exact. This only prepares a cleaner
@@ -369,24 +331,31 @@ local function MarkerFrame(plot)
     marker:EnableMouse(true)
     WBF.UI.BindWheel(marker)
     local glow = marker:CreateTexture(nil, "ARTWORK")
-    glow:SetTexture("Interface\\COMMON\\Indicator-Yellow")
+    glow:SetTexture(WBF.UI.Media.dot)
+    glow:SetVertexColor(WBF.UI.Colors.gold[1], WBF.UI.Colors.gold[2], WBF.UI.Colors.gold[3], 0.22)
     glow:SetSize(18, 18)
     glow:SetPoint("CENTER")
-    glow:SetAlpha(0.28)
     glow:Hide()
-    local dot = marker:CreateTexture(nil, "OVERLAY")
-    dot:SetTexture("Interface\\COMMON\\Indicator-Yellow")
-    if dot.SetDesaturated then
-        dot:SetDesaturated(true)
-    end
+    -- A dark outline keeps small dots reading as markers rather than as
+    -- bumps in the stroke.
+    local outline = marker:CreateTexture(nil, "OVERLAY", nil, 1)
+    outline:SetTexture(WBF.UI.Media.dot)
+    outline:SetVertexColor(0.04, 0.04, 0.05, 0.95)
+    outline:SetSize(10, 10)
+    outline:SetPoint("CENTER")
+    local dot = marker:CreateTexture(nil, "OVERLAY", nil, 2)
+    dot:SetTexture(WBF.UI.Media.dot)
     dot:SetSize(8, 8)
     dot:SetPoint("CENTER")
     marker.Ring = glow
+    marker.Outline = outline
     marker.Dot = dot
-    marker:SetScript("OnLeave", function()
+    marker:SetScript("OnLeave", function(self)
         if GameTooltip then
             GameTooltip:Hide()
         end
+        self.Outline:SetShown(self.pinned)
+        self.Dot:SetShown(self.pinned)
     end)
     return marker
 end
@@ -546,6 +515,7 @@ local function DrawHistory(plot, model, plotWidth, plotHeight)
     local curvePoints = VisualCurvePoints(visiblePoints, xOf, 5)
     local drawn = 0
     local maxSegments = 520
+    local pathXs, pathYs = {}, {}
     if #curvePoints >= 2 then
         local xs = {}
         local ys = {}
@@ -554,6 +524,7 @@ local function DrawHistory(plot, model, plotWidth, plotHeight)
             ys[index] = yOf(tonumber(curvePoints[index].balance) or 0)
         end
         local tangents = CurveTangents(xs, ys)
+        pathXs[1], pathYs[1] = xs[1], ys[1]
         for index = 1, #curvePoints - 1 do
             if drawn >= maxSegments then
                 break
@@ -562,11 +533,9 @@ local function DrawHistory(plot, model, plotWidth, plotHeight)
             local endX = xs[index + 1]
             local span = endX - startX
             if span > 0.01 then
-                -- More samples than the old graph, plus a thicker stroke, make
-                -- the path read as one continuous line at normal WoW UI scales.
-                local samples = math.max(4, math.min(34, math.ceil(span / 6)))
-                local previousX = startX
-                local previousY = ys[index]
+                -- Dense sampling keeps the angle between neighbouring segments
+                -- small, so the joints vanish under the glow stroke.
+                local samples = math.max(4, math.min(34, math.ceil(span / 4)))
                 for sample = 1, samples do
                     if drawn >= maxSegments then
                         break
@@ -582,18 +551,13 @@ local function DrawHistory(plot, model, plotWidth, plotHeight)
                         py = highY
                     end
                     drawn = drawn + 1
-                    local line = plot.lines[drawn]
-                    if not line then
-                        line = LineRegion(plot)
-                        plot.lines[drawn] = line
-                    end
-                    PositionLine(plot, line, previousX, previousY, px, py)
-                    previousX = px
-                    previousY = py
+                    pathXs[drawn + 1] = px
+                    pathYs[drawn + 1] = py
                 end
             end
         end
     end
+    WBF.UI.DrawCurve(plot, pathXs, pathYs, 0)
 
     local markerRows = MarkerPoints(visiblePoints)
     local markerCount = 0
@@ -615,7 +579,13 @@ local function DrawHistory(plot, model, plotWidth, plotHeight)
         marker:SetSize(last and 13 or 8, last and 13 or 8)
         marker.Ring:SetShown(last)
         marker.Ring:SetSize(last and 18 or 13, last and 18 or 13)
-        marker.Dot:SetSize(last and 8 or 5, last and 8 or 5)
+        marker.Outline:SetSize(last and 11 or 9, last and 11 or 9)
+        marker.Dot:SetSize(last and 7 or 6, last and 7 or 6)
+        -- Only the latest point is drawn at rest; the rest stay invisible
+        -- hover targets so clusters of changes don't crowd the line.
+        marker.pinned = last
+        marker.Outline:SetShown(last)
+        marker.Dot:SetShown(last)
         local delta = tonumber(row.delta) or 0
         local markerColor = WBF.UI.Colors.gold
         if delta > 0 then
@@ -637,6 +607,8 @@ local function DrawHistory(plot, model, plotWidth, plotHeight)
             if not GameTooltip then
                 return
             end
+            self.Outline:Show()
+            self.Dot:Show()
             local hovered = self.point
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             if GameTooltip.ClearLines then
@@ -797,7 +769,6 @@ function WBF.UI.ResourceDetail.Attach(parent)
     historyLine:SetPoint("RIGHT", historyCard, "RIGHT", -12, 0)
     historyLine:SetColorTexture(WBF.UI.Colors.line[1], WBF.UI.Colors.line[2], WBF.UI.Colors.line[3], WBF.UI.Colors.line[4])
     local plot = CreateFrame("Frame", nil, historyCard)
-    plot.lines = {}
     plot.markers = {}
     plot.yLabels = {}
     plot.xLabels = {}
