@@ -588,6 +588,62 @@ for id in pairs(db.resources.transferSeen or {}) do
     end
 end
 check("an old transfer is not remembered as seen", not keptOld)
+
+-- The same amount moved between the same two characters twice is two transfers.
+local function countDeltas(target)
+    local count = 0
+    local deltas = transferDeltas()
+    for index = 1, #deltas do
+        if deltas[index] == target then
+            count = count + 1
+        end
+    end
+    return count
+end
+resetDb()
+db.resources = { balances = {} }
+db.resources.balances[relay] = {
+    characters = { A = 100, B = 0 },
+    baselined = true,
+    baselinedAt = now - 30 * 86400,
+}
+transferLog = {
+    { currencyType = 9901, sourceCharacterGUID = "A", destinationCharacterGUID = "B", sourceCharacterName = "Miranora", destinationCharacterName = "Miraqt", quantityTransferred = 20, timestamp = now - 3 * 86400 },
+    { currencyType = 9901, sourceCharacterGUID = "A", destinationCharacterGUID = "B", sourceCharacterName = "Miranora", destinationCharacterName = "Miraqt", quantityTransferred = 20, timestamp = now - 86400 },
+}
+handlers.CURRENCY_TRANSFER_LOG_UPDATE()
+check("two identical transfers on different days are both recorded", countDeltas(-20) == 2 and countDeltas(20) == 2)
+handlers.CURRENCY_TRANSFER_LOG_UPDATE()
+check("reading the log again adds nothing", countDeltas(-20) == 2 and countDeltas(20) == 2)
+
+-- A transfer already recorded live is not recorded again from the log, and an
+-- older identical transfer does not stand in for a newer one.
+resetDb()
+db.resources = { balances = {} }
+db.resources.balances[relay] = {
+    characters = { A = 60, B = 40 },
+    baselined = true,
+    baselinedAt = now - 30 * 86400,
+}
+local function plantTransfer(at, guid, delta)
+    db.events[#db.events + 1] = {
+        id = WBF.Database.AllocEventId(),
+        at = at,
+        guid = guid,
+        eventType = "resource",
+        delta = delta,
+        meta = { resourceKey = relay, classification = "transfer", balanceAfter = 100, warbandDelta = 0 },
+    }
+end
+plantTransfer(now - 5 * 86400, "A", -20)
+plantTransfer(now - 5 * 86400 + 30, "B", 20)
+plantTransfer(now - 86400 + 5, "A", -20)
+transferLog = {
+    { currencyType = 9901, sourceCharacterGUID = "A", destinationCharacterGUID = "B", sourceCharacterName = "Miranora", destinationCharacterName = "Miraqt", quantityTransferred = 20, timestamp = now - 86400 },
+}
+handlers.CURRENCY_TRANSFER_LOG_UPDATE()
+check("the live sending side is not recorded twice", countDeltas(-20) == 2)
+check("the receiving side of the newer transfer is recorded", countDeltas(20) == 2)
 C_CurrencyInfo = nil
 
 if failures > 0 then
