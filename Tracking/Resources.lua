@@ -2209,6 +2209,13 @@ local function WithoutTransientPairs(list)
     return kept
 end
 
+local function ByTime(a, b)
+    if a.at == b.at then
+        return (a.id or 0) < (b.id or 0)
+    end
+    return (a.at or 0) < (b.at or 0)
+end
+
 local function ResourceEvents(events, key)
     local list = {}
     for index = 1, #events do
@@ -2218,13 +2225,31 @@ local function ResourceEvents(events, key)
             list[#list + 1] = event
         end
     end
-    table.sort(list, function(a, b)
-        if a.at == b.at then
-            return (a.id or 0) < (b.id or 0)
-        end
-        return (a.at or 0) < (b.at or 0)
-    end)
+    table.sort(list, ByTime)
     return WithoutTransientPairs(list)
+end
+
+-- ResourceEvents for every key from one pass over the log, for callers that
+-- need all resources at once.
+local function ResourceEventsByKey(events)
+    local grouped = {}
+    for index = 1, #events do
+        local event = events[index]
+        local meta = event.meta or {}
+        if event.eventType == WBF.EventType.Resource and meta.resourceKey ~= nil then
+            local list = grouped[meta.resourceKey]
+            if not list then
+                list = {}
+                grouped[meta.resourceKey] = list
+            end
+            list[#list + 1] = event
+        end
+    end
+    for key, list in pairs(grouped) do
+        table.sort(list, ByTime)
+        grouped[key] = WithoutTransientPairs(list)
+    end
+    return grouped
 end
 
 local function InWindow(event, startAt, endAt)
@@ -2978,6 +3003,8 @@ function WBF.Resources.ForPeriod(events, startAt, endAt, options)
     local closed = type(options) == "table" and options.closed == true
     local tiles = {}
     local byGuid = {}
+    local grouped = ResourceEventsByKey(events)
+    local none = {}
     for index = 1, #order do
         local definition = registry[order[index]]
         if WBF.ResourceBehaviour and WBF.ResourceBehaviour.SkipsCurrencyBoard(definition) then
@@ -2985,7 +3012,7 @@ function WBF.Resources.ForPeriod(events, startAt, endAt, options)
         elseif WBF.ResourceClassification and WBF.ResourceClassification.HidesFromPlayer(definition) then
             -- Internal counters stay in the registry and out of the summary.
         else
-        local records = ResourceEvents(events, definition.key)
+        local records = grouped[definition.key] or none
         local period = Summarize(records, startAt, endAt, nil, nil)
         -- A baseline alone is not period activity. Opening and current can both
         -- be non-zero while earned, spent, and net are all zero.
