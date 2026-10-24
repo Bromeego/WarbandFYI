@@ -39,6 +39,8 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 
 ### Changed
 
+- Dashboard currency tiles read the event log once per refresh instead of once per tracked resource, cutting a full-log week refresh from roughly 100–300 ms to under 30 ms in testing.
+
 - Balance History and Net Gold History draw a smooth, anti-aliased line with a soft glow and a gradient fill. Observation dots appear on hover; only the latest point stays marked.
 
 ### Removed
