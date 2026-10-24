@@ -15,6 +15,7 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 
 ### Fixed
 
+- The last month you played before a break of about three months or more is now rolled up when you return, instead of being lost as retention removed its rows. A closed month whose raw rows were trimmed reads its complete rollup.
 - Recurring event FYIs keep the same occurrence across a reload, so a completed or hidden holiday checklist no longer comes back a few seconds later.
 - Dashboard **Net Gold** opens the gold chart for the period you are viewing.
 - Pet Level Lists can be renamed from the block menu.

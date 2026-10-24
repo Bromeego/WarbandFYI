@@ -9,6 +9,7 @@ local TESTS = {
     "GoldTrackerTest",
     "HousingDecorTest",
     "LifetimeRetentionTest",
+    "MonthHistoryGapTest",
     "MonthHistoryTest",
     "NotebookFyiTest",
     "NotebookPetsTest",
