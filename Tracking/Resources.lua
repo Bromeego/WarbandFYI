@@ -4558,12 +4558,23 @@ function WBF.Resources.NotebookView(key)
     end
     local amount = nil
     local character = nil
+    local others = nil
     if type(state) == "table" then
         amount = TotalOf(state, definition)
         if not IsWarbandCurrency(definition) then
             local guid = CurrentGUID()
             if guid and type(state.characters) == "table" and type(state.characters[guid]) == "number" then
                 character = state.characters[guid]
+            end
+            -- Every other character's last scan. This character and the
+            -- warband bank are better read live by the caller.
+            if guid and type(state.characters) == "table" then
+                others = 0
+                for other, held in pairs(state.characters) do
+                    if other ~= guid and type(held) == "number" then
+                        others = others + held
+                    end
+                end
             end
         end
     end
@@ -4573,6 +4584,7 @@ function WBF.Resources.NotebookView(key)
         icon = definition.iconFile,
         amount = amount,
         character = character,
+        others = others,
         accountWide = IsWarbandCurrency(definition) and true or false,
     }
 end

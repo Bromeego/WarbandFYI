@@ -298,6 +298,22 @@ local treat = WBF.NotebookSmart.Describe({ refType = "item", refID = 33226 })
 check("tracked item line shows the warband total", treat and treat.detail and treat.detail:find("You 5", 1, true) and treat.detail:find("Warband bank 23", 1, true) and treat.detail:find("Total 183", 1, true), treat and treat.detail)
 local rows = treat and treat.countRows or {}
 check("tracked item counts come as one row each", #rows == 3 and rows[1].label == "You" and rows[1].value == 5 and rows[2].label == "Warband bank" and rows[2].value == 23 and rows[3].label == "Total" and rows[3].value == 183)
+C_Item.GetItemCount = function(itemID, _, _, _, includeAccountBank)
+    if itemID ~= 33226 then
+        return 0
+    end
+    return includeAccountBank and 23 or 0
+end
+local spent = WBF.NotebookSmart.Describe({ refType = "item", refID = 33226 })
+check("spending treats before the tracker rescans lowers the total", spent and spent.detail and spent.detail:find("You 0", 1, true) and spent.detail:find("Total 178", 1, true), spent and spent.detail)
+C_Item.GetItemCount = function(itemID, _, _, _, includeAccountBank)
+    if itemID ~= 33226 then
+        return 0
+    end
+    return includeAccountBank and 18 or 15
+end
+local withdrawn = WBF.NotebookSmart.Describe({ refType = "item", refID = 33226 })
+check("the total uses this character's live bags and the live warband bank", withdrawn and withdrawn.detail and withdrawn.detail:find("You 15", 1, true) and withdrawn.detail:find("Warband bank 3", 1, true) and withdrawn.detail:find("Total 173", 1, true), withdrawn and withdrawn.detail)
 local untracked = WBF.NotebookSmart.Describe({ refType = "item", refID = 99999 })
 check("untracked item with nothing held shows no total", untracked and untracked.detail == "You 0", untracked and untracked.detail)
 C_Item = savedItem
