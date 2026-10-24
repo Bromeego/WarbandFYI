@@ -15,6 +15,7 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 
 ### Fixed
 
+- Moving the same amount of a currency between the same two characters more than once now records every transfer. Previously any earlier identical transfer hid the new one, and a transfer recorded live on the sending character could hide the receiving side.
 - Recurring event FYIs keep the same occurrence across a reload, so a completed or hidden holiday checklist no longer comes back a few seconds later.
 - Dashboard **Net Gold** opens the gold chart for the period you are viewing.
 - Pet Level Lists can be renamed from the block menu.
