@@ -120,6 +120,23 @@ function WBF.MonthHistory.CoversRaw(startAt, now)
     return startAt >= cutoff
 end
 
+-- True while nothing from startAt onwards has been removed. Retention's cutoff
+-- can pass a month's start long before any prune runs, such as after a long
+-- break, and those rows can still be rolled up.
+function WBF.MonthHistory.RowsIntact(startAt, now)
+    if type(startAt) ~= "number" then
+        return false
+    end
+    if not WBF.Database or not WBF.Database.PrunedThrough then
+        return WBF.MonthHistory.CoversRaw(startAt, now)
+    end
+    local through = WBF.Database.PrunedThrough(now)
+    if type(through) ~= "number" then
+        return true
+    end
+    return startAt > through
+end
+
 function WBF.MonthHistory.PartialStart(ctx)
     if type(ctx) ~= "table" then
         return nil
@@ -524,7 +541,7 @@ function WBF.MonthHistory.FinalizeCompleted(now)
         local existing = history[key]
         if not (type(existing) == "table" and existing.finalized == true) then
             local startAt, _, _, closedEnd = WBF.Time.MonthBounds(year, month, now)
-            if WBF.MonthHistory.CoversRaw(startAt, now) and WBF.MonthHistory.HasRecords(startAt, closedEnd) then
+            if WBF.MonthHistory.RowsIntact(startAt, now) and WBF.MonthHistory.HasRecords(startAt, closedEnd) then
                 local rollup = Capture(year, month, now)
                 if rollup then
                     history[key] = rollup
