@@ -15,6 +15,7 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 
 ### Fixed
 
+- The warband total on a tracked Notebook item line counts this character and the Warband bank live, so spending or moving items no longer leaves the total stuck at the last scanned amount until the tracker rescans.
 - Recurring event FYIs keep the same occurrence across a reload, so a completed or hidden holiday checklist no longer comes back a few seconds later.
 - Dashboard **Net Gold** opens the gold chart for the period you are viewing.
 - Pet Level Lists can be renamed from the block menu.
