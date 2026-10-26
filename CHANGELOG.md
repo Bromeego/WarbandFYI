@@ -15,6 +15,7 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 
 ### Fixed
 
+- A saved-data upgrade no longer replaces the previous pre-upgrade backup. Every earlier backup is kept, unchanged, in `WarbandFYI_Backup.previous`, and Maintenance shows how many are kept.
 - Recurring event FYIs keep the same occurrence across a reload, so a completed or hidden holiday checklist no longer comes back a few seconds later.
 - Dashboard **Net Gold** opens the gold chart for the period you are viewing.
 - Pet Level Lists can be renamed from the block menu.
