@@ -1,10 +1,18 @@
 # Permanent history retention
 
-Status: **design under review** (PR #8). Nothing in this document is
-implemented yet. Revision 2, 2026-10-24: records the section 15 decisions,
-adds read-and-validate before any data moves, separates in-memory atomicity
-from on-disk durability, sizes migration backup chains, and adds a
-constant budget with early warnings.
+Status: **design under review** (PR #8). Only stage 1 is being implemented
+(section 14, its own PR). Defect fixes from the October audit are tracked
+separately in `docs/audit/2026-10-reliability-audit.md`.
+
+- Revision 2, 2026-10-24: records the section 15 decisions, adds
+  read-and-validate before any data moves, separates in-memory atomicity
+  from on-disk durability, sizes migration backup chains, and adds a
+  constant budget with early warnings.
+- Revision 3, 2026-10-26: spells out what the load-failure guard can and
+  cannot observe, including missing and unreadable files (4.3); marks the
+  budget thresholds provisional until confirmed in WoW (7.3); replaces the
+  two-week validation period with observed month boundaries, prunes, cap
+  trims and reloads (9.2); adds probe test 7.
 
 Applies to schema 7 (`0.2.0-dev.2c`).
 
@@ -181,26 +189,94 @@ What protects against loss of the file itself:
 
 ### 4.3 Load-failure guard (stage 2c)
 
-If `WarbandFYI.lua` fails to load (corrupt, truncated, or over the constant
-limit), the addon starts with no data, and today it creates a fresh empty
-database. The next logout then writes that empty database to the file.
+#### Problem
 
-Guard:
+If `WarbandFYI.lua` is missing or fails to load, the addon sees
+`WarbandFYI_DB == nil`. Today `Database.Init` then creates a fresh empty
+database, and the next logout writes it to the file.
 
-- A small per-character sentinel, `WarbandFYI_Sentinel`
-  (`## SavedVariablesPerCharacter`, a separate physical file), records at each
-  logout: save time, schema, event and snapshot counts, archive block count
-  and the constant estimate.
-- On login, if the sentinel shows data existed but `WarbandFYI_DB` is missing
-  or empty, the addon does **not** create defaults. It enters read-only
-  degraded mode with a full-screen warning: the last good file is still on
-  disk until you log out, so copy the `SavedVariables` folder now, then close
-  the game and restore (section 12).
-- What WoW then writes on logout must be confirmed by the probe; the warning
-  text will say exactly what happens.
-- A brand-new character has no sentinel, so the guard only protects
-  characters that have played with this version before. That limitation is
-  stated in Maintenance.
+#### What the addon can and cannot observe
+
+The addon cannot read files. It only sees which globals exist after WoW has
+run each SavedVariables file. From inside the addon, these situations look
+like this:
+
+| On disk | What the addon sees |
+|---|---|
+| File missing: first install, file deleted or moved, WTF folder reset | `WarbandFYI_DB == nil` |
+| File fails to compile: syntax error, truncation mid-statement, constant overflow | `WarbandFYI_DB == nil` (a chunk that fails to compile defines nothing) |
+| File truncated exactly between two top-level assignments | Some variables present, later ones `nil`. WoW writes `WarbandFYI_DB` before `WarbandFYI_Backup` in practice, but the order is not documented. |
+| File holds an older save (restored external copy, or WoW fell back to `.bak`) | `WarbandFYI_DB` present but older |
+| `WarbandFYI_DB` is not a table | A non-table value (`Init` replaces it today) |
+
+So "missing" and "unreadable" cannot be told apart from inside the addon,
+and neither can be told apart from a genuine first install without another
+signal.
+
+**Assumptions that must be checked with the probe (section 13, tests 2, 3
+and 7)**, because the guard depends on them:
+
+1. A failed account-wide file does not affect the per-character file, and
+   vice versa.
+2. A file that fails to load leaves its globals `nil` rather than partly set.
+3. What WoW writes on logout after a failed load, to both the file and
+   `.bak`, when the addon leaves the variable `nil` and when it replaces it.
+4. Whether WoW ever falls back to `.bak` on its own.
+
+Until those are confirmed, the guard only warns and pauses writes it
+controls; it does not promise that the file on disk is safe.
+
+#### Signal: a per-character sentinel
+
+`WarbandFYI_Sentinel` (`## SavedVariablesPerCharacter`, a separate physical
+file per character) is written at every logout with:
+
+- `saveSerial`: a counter also stored in `WarbandFYI_DB.saveSerial`, raised
+  by one at every logout;
+- schema, addon version, save time;
+- counts of events, snapshots, sessions, Notebook pages and archive blocks.
+
+Both files are written by the same logout, so after a clean save they agree.
+
+#### Decisions at login
+
+| `WarbandFYI_DB` | Sentinel | Meaning | Action |
+|---|---|---|---|
+| table, `saveSerial` equal | present | Normal | Normal |
+| table, `saveSerial` higher | present | Another character saved since; normal | Normal |
+| table, `saveSerial` lower | present | Older file: a restore or a `.bak` fallback | Load normally; one clear notice naming the save time the sentinel expected and the one found. A restore is often intentional, so this never blocks. |
+| `nil` or not a table | present with data | **Missing or unreadable file** | Guard (below) |
+| `nil` | absent | First install, or a character that never played with this version | Create defaults, as today |
+| `nil` | present but empty (counts all zero) | Nothing was ever recorded | Create defaults |
+| table | absent or unreadable | Sentinel lost; data fine | Normal; rebuild the sentinel at logout |
+
+#### Guard
+
+- Do not create defaults and do not record anything. The addon stays in
+  read-only mode with no data.
+- Show a blocking dialog and a chat message, worded around what is known:
+  "WarbandFYI could not load its saved data, which existed at your last
+  logout (save N, date). Do not log out yet. Copy the whole `WTF` folder
+  somewhere safe now, then close the game and restore `WarbandFYI.lua` from
+  your latest backup or from `WarbandFYI.lua.bak`." The final wording follows
+  the probe results.
+- `/wbfyi startfresh` lets the player confirm that an empty start is
+  intended (for example a deliberately deleted file). It asks for
+  confirmation and records the decision, with its time, in the new database.
+- The guard never deletes, renames or edits the sentinel. It is only
+  replaced at the next normal logout.
+
+#### Limits
+
+- A character with no sentinel (new, or not played since this version)
+  cannot detect a failed load. Logging in on such a character first would
+  create defaults as today. Maintenance and the guide say so, and the
+  external backup routine (section 12) is the protection.
+- If the per-character file is also lost (for example the whole `WTF` folder
+  was reset), the situation is indistinguishable from a first install.
+- The guard cannot make WoW keep the old file. Its job is to stop the addon
+  making things worse and to tell the player to copy the files while they
+  still can.
 
 ## 5. Archive format
 
@@ -374,15 +450,38 @@ and is shown in Maintenance with the file-size estimate.
 
 The ceiling is 262,143 until the probe confirms WoW's real limit; if WoW
 allows more, the ceiling stays at 262,143 unless a later reviewed PR changes
-it. Thresholds:
+it.
 
-| Level | Budget used | Behaviour |
+**The thresholds below are provisional.** They come from desktop Lua
+measurements, and none of the numbers behind them (the limit, the meter's
+accuracy, load and save times) has been confirmed in WoW.
+
+| Level | Provisional budget | Behaviour |
 |---|---|---|
-| Normal | below 35% | Maintenance shows the figure |
+| Normal | below 35% | Maintenance shows the figure, marked "estimate" |
 | Notice | 35% | Maintenance highlights it; one chat line per week |
 | Warning | 45% | A chat line at every login with what to do (back up, export); archiving given priority once it exists |
 | Brake | 55% | Degraded mode (7.4) |
 | Read-only | 70% | All recording paused (7.4) |
+
+While provisional:
+
+- The values live in one table in the code, each marked provisional, and
+  Maintenance labels them "provisional – not yet confirmed in WoW".
+- Notices and warnings are always active, since they cost nothing.
+- Degraded and read-only modes are active too, because they are the only
+  protection if the file approaches a load failure. Because the caps remain
+  until stage 3c, they can only be reached by backups accumulating or by
+  repeated archive failures.
+
+They become final in a separate reviewed PR, only when all of these hold:
+
+1. The probe (section 13, test 1) has measured WoW's limit.
+2. The meter's estimate has been compared with the offline counter
+   (section 12) on real saved files, at least three of them at different
+   sizes, and stays within 5% of it, always on the high side.
+3. WoW load and save times are measured for files at each threshold
+   (probe test 5).
 
 Hysteresis: tracking resumes only when usage falls 5 points below the level
 that stopped it. Today's measured working sets use 3–18%, so normal play
@@ -490,11 +589,30 @@ The probe (section 13) runs alongside stage 1 and must finish before 3c.
 1. Stage 3a's tests pass: round trip and determinism over every value type
    the addon stores; corruption, truncation and missing-block tests;
    interruption and repeated-run tests (section 11).
-2. Stage 3b has run in-game on your account for at least two weeks, covering
-   at least one month boundary and one retention prune, with:
-   - zero verification failures;
-   - copy-mode query results identical to live results (8.3);
-   - the offline verify tool passing on an external copy of the file.
+2. Stage 3b has **observed** each of the events below in-game on your
+   account. Elapsed time alone counts for nothing: a save with less than 120
+   days of history never prunes, and a light player may never reach a cap.
+   The addon records each observation in `archive.state.validation` with its
+   time and the blocks involved, and Maintenance shows the checklist; the
+   gate is met only when every line is ticked.
+   - **Month boundary**: a calendar month closed while 3b was active, its
+     copy blocks were written, verified, and their query results matched the
+     live rows.
+   - **Retention prune**: a login or new session pruned rows by age, every
+     pruned row was copied into a verified block first, and the copy
+     decoded to exactly the rows that were then deleted.
+   - **Event cap trim** and **snapshot cap trim**: each observed the same
+     way. If your play does not reach a cap, the gate is met instead by
+     `/wbfyi archive exercise cap`, which runs the same selection and copy
+     path over the rows a trim would take, without deleting anything (copy
+     mode never deletes), and verifies the result.
+   - **Reload and relog**: at least one `/reload` and one full logout/login
+     with every block re-verified afterwards.
+   - **Offline check**: the verify tool (section 12) passed on an external
+     copy taken after all of the above.
+   - **No failures**: zero verification failures and zero query mismatches
+     for the whole period. Any failure resets the checklist once the cause is
+     fixed.
 3. The probe has run, so WoW's real limits and save behaviour are known.
 4. An external backup has been taken and a restore rehearsed on a copy.
 5. Stages 2b and 2c are in place: the budget meter, warnings, degraded mode,
@@ -686,6 +804,16 @@ Tests, each driven by a slash command and a `/reload` or relog:
    logout and login times and in-game memory.
 6. **Forced exit**: quit with Alt+F4 or end the process after changes; is the
    file unchanged (expected: last save kept)?
+7. **Missing, unreadable and partial files** (with WoW closed between
+   steps, on the probe's own files only):
+   - delete the probe's account file: are its globals `nil`, and is the
+     per-character file still loaded?
+   - put a syntax error at the end of the file: is any variable defined?
+   - cut the file between two top-level assignments: is the first variable
+     loaded and the second `nil`?
+   - with the main file unreadable and a valid `.bak` beside it: does WoW
+     ever load the `.bak` by itself?
+   - after each, what do the file and `.bak` contain following a logout?
 
 Precautions: take an external backup of the whole `WTF` folder first. The
 probe can slow logout while large data is saved, and a failed load clears
