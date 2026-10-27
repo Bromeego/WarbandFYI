@@ -221,8 +221,9 @@ local function ResourceWidgets(summary)
                     text
                 )
             end
+            -- One line each so neither figure is clipped by the card width.
             subline = tint(WBF.UI.Colors.green, WBF.Format.Signed(earned) .. " gained")
-                .. "   "
+                .. "\n"
                 .. tint(WBF.UI.Colors.red, WBF.Format.Signed(-spent) .. " spent")
         end
         if earned > 0 or spent > 0 then
