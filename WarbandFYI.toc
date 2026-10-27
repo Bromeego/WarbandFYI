@@ -1,7 +1,7 @@
 ## Interface: 120105, 120100, 120007
 ## Title: WarbandFYI
 ## Notes: See what your Warband's been up to.
-## Version: 0.2.0-dev.2c
+## Version: 0.2.0-dev.2d
 ## SavedVariables: WarbandFYI_DB, WarbandFYI_Backup
 ## AllowLoadGameType: mainline
 ## IconTexture: Interface\Icons\INV_Misc_Book_09
