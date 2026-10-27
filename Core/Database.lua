@@ -856,6 +856,43 @@ Migrations[6] = function(db)
     maintenance.lastPruneRemoved = tonumber(maintenance.lastPruneRemoved) or 0
 end
 
+-- Every earlier safety copy stays in WarbandFYI_Backup.previous, oldest
+-- first, exactly as it was. Nothing is ever removed from that list. A value
+-- that is not a table is kept as { unreadable = value }; an empty table holds
+-- nothing to keep.
+local function EarlierBackups(existing)
+    if existing == nil then
+        return nil
+    end
+    if type(existing) ~= "table" then
+        return { { unreadable = existing } }
+    end
+    if type(existing.previous) ~= "table" then
+        -- No chain yet (or a damaged one, kept as found): the backup itself
+        -- becomes the newest earlier entry, unchanged.
+        if next(existing) == nil then
+            return nil
+        end
+        return { existing }
+    end
+    -- Lift the chain out so it is not nested inside its own newest entry.
+    -- Every other field is carried over by reference, unchanged.
+    local previous = existing.previous
+    local entry = {}
+    for key, value in pairs(existing) do
+        if key ~= "previous" then
+            entry[key] = value
+        end
+    end
+    if next(entry) ~= nil then
+        previous[#previous + 1] = entry
+    end
+    if #previous == 0 then
+        return nil
+    end
+    return previous
+end
+
 local function ApplyMigrations(db)
     local version = db.schemaVersion
     if type(version) ~= "number" or version < 1 then
@@ -879,6 +916,7 @@ local function ApplyMigrations(db)
                 fromSchema = version,
                 targetSchema = CURRENT_SCHEMA_VERSION,
                 data = DeepCopy(db),
+                previous = EarlierBackups(WarbandFYI_Backup),
             }
         end
     end
