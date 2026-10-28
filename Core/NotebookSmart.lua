@@ -626,6 +626,10 @@ function WBF.NotebookSmart.Describe(block)
     local detail = nil
     local icon = nil
     local resolved = false
+    -- Item counts as separate label/value rows, for views that list them
+    -- one per line instead of reading the joined detail text.
+    local countRows = nil
+    local note = nil
     if not spec then
         return { title = "Reference", resolved = false }
     end
@@ -650,8 +654,10 @@ function WBF.NotebookSmart.Describe(block)
         local counts = WBF.NotebookSmart.ItemCounts(id)
         if counts then
             local countText = "You " .. tostring(counts.character or 0)
+            countRows = { { label = "You", value = counts.character or 0 } }
             if (counts.accountBank or 0) > 0 then
                 countText = countText .. "  ·  Warband bank " .. tostring(counts.accountBank)
+                countRows[#countRows + 1] = { label = "Warband bank", value = counts.accountBank }
             end
             -- Tracked items (event tokens) know what every alt holds, so the
             -- warband total covers more than this character plus the bank.
@@ -660,6 +666,7 @@ function WBF.NotebookSmart.Describe(block)
             local total = math.max(view and tonumber(view.amount) or 0, counts.combined or 0)
             if total > (counts.character or 0) then
                 countText = countText .. "  ·  Total " .. tostring(total)
+                countRows[#countRows + 1] = { label = "Total", value = total }
             end
             detail = countText
         end
@@ -700,6 +707,7 @@ function WBF.NotebookSmart.Describe(block)
         if not title then
             title = spec.label
         elseif title ~= spec.label then
+            note = spec.label
             if detail and detail ~= "" then
                 detail = detail .. "  ·  " .. spec.label
             else
@@ -729,6 +737,8 @@ function WBF.NotebookSmart.Describe(block)
     return {
         title = title,
         detail = detail,
+        countRows = countRows,
+        note = note,
         icon = icon,
         url = spec.url,
         resolved = resolved,

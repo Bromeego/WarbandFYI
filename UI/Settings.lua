@@ -449,7 +449,7 @@ function WBF.UI.Settings.Refresh()
     if diagnosticsStatus and WBF.Maintenance and WBF.Maintenance.Diagnostics then
         local d = WBF.Maintenance.Diagnostics()
         local size = WBF.Maintenance.HumanBytes and WBF.Maintenance.HumanBytes(d.approximateBytes) or tostring(d.approximateBytes or 0)
-        local backup = d.migrationBackupAt and ("migration backup schema " .. tostring(d.migrationBackupFrom) .. " -> " .. tostring(d.migrationBackupTarget)) or "no migration backup needed yet"
+        local backup = d.migrationBackupAt and ("migration backup schema " .. tostring(d.migrationBackupFrom) .. " -> " .. tostring(d.migrationBackupTarget) .. ", " .. tostring(d.migrationBackupsKept or 1) .. " kept") or "no migration backup needed yet"
         diagnosticsStatus:SetText("Schema " .. tostring(d.schemaVersion) .. " · approx " .. size .. " · " .. tostring(d.events) .. " events · " .. tostring(d.snapshots) .. " snapshots · " .. tostring(d.monthHistory) .. " month rollups · " .. backup .. ".")
     end
     local selected = WarbandFYI_DB.config.sessionTimeoutSeconds or 3600

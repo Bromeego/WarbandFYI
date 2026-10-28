@@ -68,6 +68,10 @@ WoW saves addon data locally using the `WarbandFYI_DB` and `WarbandFYI_Backup` s
 
 Close WoW before manually copying or restoring saved data so the game does not overwrite your changes. Back up saved data before testing changes that alter storage or history.
 
+Before a saved-data upgrade, WarbandFYI copies your data into `WarbandFYI_Backup`. Every earlier copy is kept in `WarbandFYI_Backup.previous`, oldest first, and none is ever removed automatically. Settings → Maintenance shows the newest copy and how many are kept. These copies live in the same file as your data, so they protect against a faulty upgrade, not against losing or damaging the file; keep your own dated copies of `WarbandFYI.lua` for that.
+
+To restore from an in-file backup: close WoW, keep a copy of the current `WarbandFYI.lua`, then replace the `WarbandFYI_DB` value in the file with the backup's `data` value (or ask for help in a GitHub issue before editing). An older addon version can read a newer backup chain but does not show it.
+
 Detailed history is bounded: the default retention period is 120 days, and the event list also has a size limit. Older detail may therefore be unavailable even when summary totals remain. Neither Git history nor updating the addon restores pruned gameplay events.
 
 ## Reporting a problem
