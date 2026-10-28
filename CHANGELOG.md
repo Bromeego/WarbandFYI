@@ -4,6 +4,12 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 
 ## Unreleased
 
+## 0.2.0-dev.2e — 2026-10-28
+
+### Fixed
+
+- The last month you played before a break of about three months or more is now rolled up when you return, instead of being lost as retention removed its rows. A closed month whose raw rows were trimmed reads its complete rollup.
+
 ## 0.2.0-dev.2d — 2026-10-27
 
 ### Added

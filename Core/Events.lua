@@ -84,6 +84,9 @@ function WBF.Events.Add(partial)
         local fresh = {}
         local startAt = #db.events - TRIM_TO + 1
         for index = 1, startAt - 1 do
+            if WBF.Database.NotePruned and type(db.events[index]) == "table" then
+                WBF.Database.NotePruned(db.events[index].at)
+            end
             if WBF.Database.FoldDiscardedEvent then
                 WBF.Database.FoldDiscardedEvent(db.events[index])
             end

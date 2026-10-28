@@ -1213,6 +1213,44 @@ function WBF.Database.FoldDiscardedSession(session)
     end
 end
 
+-- Raw rows stamped at or before db.prunedThrough may be gone, whether
+-- retention or a size cap removed them. Rows after it are all still kept.
+function WBF.Database.NotePruned(at)
+    local db = WarbandFYI_DB
+    if type(db) ~= "table" or type(at) ~= "number" then
+        return
+    end
+    if type(db.prunedThrough) ~= "number" or at > db.prunedThrough then
+        db.prunedThrough = at
+    end
+end
+
+-- Older saves never recorded prunedThrough. The last prune then used its own
+-- day's cutoff; with no record of any prune, assume today's cutoff.
+function WBF.Database.PrunedThrough(now)
+    local db = WarbandFYI_DB
+    if type(db) ~= "table" then
+        return nil
+    end
+    if type(db.prunedThrough) == "number" then
+        return db.prunedThrough
+    end
+    local days = WBF.Database.RetentionDays()
+    if not days then
+        return nil
+    end
+    if type(db.lastPruneAt) == "number" then
+        return db.lastPruneAt - (days * 86400)
+    end
+    return WBF.Database.RetentionCutoff(now)
+end
+
+local function NoteTrimmed(row)
+    if type(row) == "table" then
+        WBF.Database.NotePruned(row.at)
+    end
+end
+
 local function TrimArray(field, limit, keep, fold)
     local db = WarbandFYI_DB
     local source = db[field]
@@ -1222,6 +1260,7 @@ local function TrimArray(field, limit, keep, fold)
     local fresh = {}
     local startAt = #source - keep + 1
     for index = 1, startAt - 1 do
+        NoteTrimmed(source[index])
         if fold then
             fold(source[index])
         end
@@ -1384,6 +1423,7 @@ function WBF.Database.Prune(force)
     if not cutoff then
         return 0
     end
+    WBF.Database.NotePruned(cutoff)
 
     local removed = 0
     local sessions = {}
