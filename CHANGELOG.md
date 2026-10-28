@@ -4,6 +4,12 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 
 ## Unreleased
 
+## 0.2.0-dev.2e — 2026-10-28
+
+### Fixed
+
+- The last month you played before a break of about three months or more is now rolled up when you return, instead of being lost as retention removed its rows. A closed month whose raw rows were trimmed reads its complete rollup.
+
 ## 0.2.0-dev.2d — 2026-10-27
 
 ### Added
@@ -17,7 +23,6 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 
 ### Fixed
 
-- The last month you played before a break of about three months or more is now rolled up when you return, instead of being lost as retention removed its rows. A closed month whose raw rows were trimmed reads its complete rollup.
 - A saved-data upgrade no longer replaces the previous pre-upgrade backup. Every earlier backup is kept, unchanged, in `WarbandFYI_Backup.previous`, and Maintenance shows how many are kept.
 - Recurring event FYIs keep the same occurrence across a reload, so a completed or hidden holiday checklist no longer comes back a few seconds later.
 - Dashboard **Net Gold** opens the gold chart for the period you are viewing.
