@@ -4,6 +4,14 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 
 ## Unreleased
 
+### Added
+
+- Collection Hunts can track the **Headless Horseman** daily loot bag during Hallow's End. Each character shows Available or Done today, resetting daily, and the login FYI lists characters that have not looted today's bag. Hunts can now target pets (Shift-click in the Pet Journal or a pet item) and complete automatically once the pet is collected.
+
+### Fixed
+
+- Item counts on FYI lines no longer appear twice: the item line shows only its name, with You, Warband bank and Total each on their own line below.
+
 ## 0.2.0-dev.2e — 2026-10-28
 
 ### Fixed
