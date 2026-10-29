@@ -967,9 +967,15 @@ local function LinesFor(block)
         end
         local itemID = block.refType == "item" and Whole(block.refID) or nil
         local countRows = described and described.countRows or nil
+        -- With count rows the counts get their own lines, so the item line
+        -- keeps only the label note (if any), not the joined count text.
+        local detail = described and described.detail or nil
+        if countRows then
+            detail = described.note
+        end
         lines[1] = {
             text = text,
-            detail = described and (countRows and described.note or described.detail) or nil,
+            detail = detail,
             summary = described and described.detail or nil,
             blockId = block.id,
             icon = described and described.icon or nil,
