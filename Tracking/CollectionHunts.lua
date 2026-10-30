@@ -80,6 +80,7 @@ local function Store()
     if type(data.custom) ~= "table" then data.custom = {} end
     if type(data.hidden) ~= "table" then data.hidden = {} end
     if type(data.completed) ~= "table" then data.completed = {} end
+    if type(data.daily) ~= "table" then data.daily = {} end
     for key, target in pairs(data.custom) do
         if type(target) == "table" then
             -- Migrate older custom item hunts for explicitly known mount drops.
@@ -111,7 +112,7 @@ local function Store()
                 if type(name) == "string" then target.title = name end
             end
         end
-        if type(key) == "string" and type(target) == "table" and type(target.title) == "string" and type(target.instance) == "string" and type(target.boss) == "string" and (type(target.itemID) == "number" or type(target.achievementID) == "number" or type(target.mountID) == "number") and not catalog[key] then
+        if type(key) == "string" and type(target) == "table" and type(target.title) == "string" and type(target.instance) == "string" and type(target.boss) == "string" and (type(target.itemID) == "number" or type(target.achievementID) == "number" or type(target.mountID) == "number" or type(target.petSpeciesID) == "number") and not catalog[key] then
             catalog[key] = target
             ordered[#ordered + 1] = key
         end
@@ -126,7 +127,7 @@ function Hunts.Sources()
     local options = {}
     for _, key in ipairs(sourceKeys) do
         local entry = sourceRegistry[key]
-        options[#options+1] = { key=key, instance=entry.instance, boss=entry.boss, note=entry.note, difficulty=entry.difficulty, collectionType=entry.collectionType }
+        options[#options+1] = { key=key, instance=entry.instance, boss=entry.boss, note=entry.note, difficulty=entry.difficulty, collectionType=entry.collectionType, daily=entry.daily }
     end
     return options
 end
@@ -173,6 +174,24 @@ local function MountCollected(spellID)
     return nil
 end
 
+-- Pet Journal ownership, by species. nil means the Journal gave no answer.
+local function PetCollected(speciesID)
+    if type(speciesID) ~= "number" or not (C_PetJournal and C_PetJournal.GetNumCollectedInfo) then return nil end
+    local owned = WBF.Format.SafeCall(C_PetJournal.GetNumCollectedInfo, speciesID)
+    if type(owned) ~= "number" then return nil end
+    return owned > 0
+end
+-- A caged or learnable pet item names its species; other items return nil.
+local function PetSpeciesForItem(itemID)
+    if type(itemID) ~= "number" or not (C_PetJournal and C_PetJournal.GetPetInfoByItemID) then return nil end
+    local speciesID = select(13, WBF.Format.SafeCall(C_PetJournal.GetPetInfoByItemID, itemID))
+    return type(speciesID) == "number" and speciesID > 0 and speciesID or nil
+end
+local function PetName(speciesID)
+    if not (C_PetJournal and C_PetJournal.GetPetInfoBySpeciesID) then return nil end
+    return WBF.Format.PlainString((WBF.Format.SafeCall(C_PetJournal.GetPetInfoBySpeciesID, speciesID)))
+end
+
 function Hunts.Preview(link)
     local id = tonumber(tostring(link or ""):match("item:(%d+)")) or tonumber(tostring(link or ""):match("^%s*(%d+)%s*$"))
     if not id then id = Hunts.ResolveKnownName(link) end
@@ -187,6 +206,9 @@ local function ParseTarget(link)
     local text = tostring(link or "")
     local mount = tonumber(text:match("^%s*mount:(%d+)%s*$"))
     if mount then return "mount", mount end
+    -- Shift-clicking a pet in the Pet Journal gives a battlepet link.
+    local pet = tonumber(text:match("battlepet:(%d+)"))
+    if pet then return "pet", pet end
     local achievement = tonumber(text:match("achievement:(%d+)"))
     if achievement then return "achievement", achievement end
     local item = tonumber(text:match("item:(%d+)")) or tonumber(text:match("^%s*(%d+)%s*$"))
@@ -199,13 +221,16 @@ end
 function Hunts.AddTarget(link, sourceKey)
     local kind, id = ParseTarget(link)
     local source = sourceRegistry[sourceKey]
-    if not id then return nil, "Enter a known mount name, an item ID, or Shift-click an item (use the achievement picker for achievements)." end
-    if not source then return nil, "Choose a supported raid source." end
+    if not id then return nil, "Enter a known mount name, an item ID, or Shift-click an item or pet (use the achievement picker for achievements)." end
+    if not source then return nil, "Choose a supported source." end
     local data = Store()
     local key = kind .. id .. "_" .. sourceKey
     if not catalog[key] then
         local title
-        if kind == "mount" then
+        local petSpeciesID = kind == "pet" and id or (kind == "item" and PetSpeciesForItem(id)) or nil
+        if kind == "pet" then
+            title = PetName(id) or ("Pet #" .. id)
+        elseif kind == "mount" then
             local mount = Hunts.Mount(id)
             if not mount then return nil, "Mount not found in the Mount Journal." end
             title = mount.name
@@ -213,7 +238,7 @@ function Hunts.AddTarget(link, sourceKey)
             if GetAchievementInfo then local achievementID, name = GetAchievementInfo(id); title = name end
             if type(title) ~= "string" or title == "" then title = "Achievement #" .. id end
         else
-            title = ItemName(id) or ("Item #" .. id)
+            title = ItemName(id) or (petSpeciesID and PetName(petSpeciesID)) or ("Item #" .. id)
         end
         local knownMount = kind == "item" and Hunts.Preview(link)
         local journalMount = kind == "mount" and Hunts.Mount(id)
@@ -221,8 +246,9 @@ function Hunts.AddTarget(link, sourceKey)
             mountID=journalMount and id or nil, mountIcon=journalMount and journalMount.icon or nil,
             mountSpellID=(journalMount and journalMount.spellID) or (knownMount and sourceKey == knownMount.sourceKey and source.mountSpellID or nil),
             achievementID=kind == "achievement" and id or nil,
+            petSpeciesID=petSpeciesID,
             instance=source.instance, boss=source.boss,
-            defaultGoal=(kind == "mount" and "mount") or (kind == "achievement" and "achievement") or (knownMount and sourceKey == knownMount.sourceKey and "mount" or "item"), custom=true, sourceKey=sourceKey, sourceNote=source.note }
+            defaultGoal=(kind == "mount" and "mount") or (kind == "achievement" and "achievement") or (petSpeciesID and "pet") or (knownMount and sourceKey == knownMount.sourceKey and "mount" or "item"), custom=true, sourceKey=sourceKey, sourceNote=source.note }
         catalog[key] = data.custom[key]
         ordered[#ordered + 1] = key
     end
@@ -259,6 +285,9 @@ function Hunts.Completion(key)
     end
     if goal == "mount" and target.mountSpellID and MountCollected(target.mountSpellID) == true then
         return true, "mount"
+    end
+    if goal == "pet" and target.petSpeciesID and PetCollected(target.petSpeciesID) == true then
+        return true, "pet"
     end
     return false
 end
@@ -319,7 +348,7 @@ function Hunts.Active()
     return result
 end
 
-local validGoals = { achievement = true, appearance = true, item = true, mount = true }
+local validGoals = { achievement = true, appearance = true, item = true, mount = true, pet = true }
 local function Settings(key)
     local data = Store()
     if type(data.settings[key]) ~= "table" then data.settings[key] = {} end
@@ -345,6 +374,9 @@ function Hunts.Eligibility(key, guid)
     if setting.characterMode == "selected" and not setting.selected[guid] then return "excluded" end
     local character = WBF.Characters and WBF.Characters.Get and WBF.Characters.Get(guid)
     if not character then return "unknown" end
+    -- Every character gets its own daily bag, whatever the class.
+    local source = target.sourceKey and sourceRegistry[target.sourceKey]
+    if source and source.daily then return "eligible" end
     local class = character.classFile
     if setting.goal == "mount" then
         if target.mountSpellID then return "eligible" end
@@ -387,6 +419,29 @@ local function SourceForHunt(key, target)
     return nil, nil
 end
 
+local function EventRunning(eventKey)
+    if not eventKey then return true end
+    if not (WBF.EventTriggers and WBF.EventTriggers.Active) then return nil end
+    for _, event in ipairs(WBF.EventTriggers.Active()) do
+        if event.eventKey == eventKey then return true end
+    end
+    return false
+end
+
+-- A daily boss reads "done" until the next daily reset. An unseen character,
+-- or one last seen before the reset, stays unverified rather than available.
+local function DailyStatus(data, sourceKey, source, guid)
+    local running = EventRunning(source.eventKey)
+    if running == false then return "closed" end
+    local seen = data.daily[guid] and data.daily[guid][sourceKey]
+    if type(seen) ~= "table" or type(seen.checkedAt) ~= "number" then return "unknown" end
+    local now = time()
+    if now < seen.checkedAt or (seen.expiresAt and seen.expiresAt <= now) then return "unknown" end
+    if seen.done then return "done" end
+    if running == nil then return "unknown" end
+    return "available"
+end
+
 -- Only a fresh, successfully completed saved-instance scan can prove an
 -- available attempt. A scan of an alt never refreshes its snapshot.
 function Hunts.Status(key, guid)
@@ -397,6 +452,10 @@ function Hunts.Status(key, guid)
     local eligibility = Hunts.Eligibility(key, guid)
     if eligibility == "excluded" or eligibility == "ineligible" then return eligibility end
     if eligibility == "unknown" then return "unknown" end
+    local dailySource = target.sourceKey and sourceRegistry[target.sourceKey]
+    if dailySource and dailySource.daily then
+        return DailyStatus(data, target.sourceKey, dailySource, guid)
+    end
     local char = data.lockouts[guid]
     local raid = char and char[Norm(target.instance)]
     if not raid or not raid.checkedAt or not raid.verified then return "unknown" end
@@ -481,6 +540,54 @@ function Hunts.Sync()
     if WBF.UI and WBF.UI.RequestRefresh then WBF.UI.RequestRefresh() end
 end
 
+-- Daily holiday bosses report whether today's reward was already looted.
+-- The LFG data is only filled after RequestLFDPlayerLockInfo answers.
+function Hunts.DailyDone(sourceKey)
+    local source = sourceRegistry[sourceKey]
+    if not (source and source.daily and source.lfgDungeonID and GetLFGDungeonRewards) then return nil end
+    local doneToday = WBF.Format.SafeCall(GetLFGDungeonRewards, source.lfgDungeonID)
+    if type(doneToday) ~= "boolean" then return nil end
+    return doneToday
+end
+
+local function SecondsUntilDailyReset()
+    if C_DateAndTime and C_DateAndTime.GetSecondsUntilDailyReset then
+        local seconds = WBF.Format.SafeCall(C_DateAndTime.GetSecondsUntilDailyReset)
+        if type(seconds) == "number" and seconds > 0 then return seconds end
+    end
+    if GetQuestResetTime then
+        local seconds = WBF.Format.SafeCall(GetQuestResetTime)
+        if type(seconds) == "number" and seconds > 0 then return seconds end
+    end
+end
+
+function Hunts.SyncDaily()
+    local data = Store()
+    local guid = WBF.Characters and WBF.Characters.GetGuid and WBF.Characters.GetGuid()
+    if not guid then return end
+    local untilReset = SecondsUntilDailyReset()
+    -- Without the reset time a "done" read cannot know when it expires.
+    if not untilReset then return end
+    local now = time()
+    local seen = data.daily[guid] or {}
+    local changed = false
+    for _, sourceKey in ipairs(sourceKeys) do
+        local done = Hunts.DailyDone(sourceKey)
+        if done ~= nil then
+            seen[sourceKey] = { done = done, checkedAt = now, expiresAt = now + untilReset }
+            changed = true
+        end
+    end
+    if changed then
+        data.daily[guid] = seen
+        if WBF.UI and WBF.UI.RequestRefresh then WBF.UI.RequestRefresh() end
+    end
+end
+
+local function RequestDailyInfo()
+    if RequestLFDPlayerLockInfo then WBF.Format.SafeCall(RequestLFDPlayerLockInfo) end
+end
+
 -- Snapshot known mount hunt state at login. Never celebrate previously collected
 -- mounts during migration, initialisation or UI refresh.
 local observedMounts = nil
@@ -526,6 +633,12 @@ function Hunts.Register(bus)
     end)
     bus:On("PLAYER_ENTERING_WORLD", function()
         if RequestRaidInfo then RequestRaidInfo() end
+        RequestDailyInfo()
+    end)
+    bus:On("LFG_UPDATE_RANDOM_INFO", function() Hunts.SyncDaily() end)
+    -- Looting a holiday boss bag marks the reward as done for today.
+    bus:On("LFG_COMPLETION_REWARD", function()
+        if C_Timer and C_Timer.After then C_Timer.After(2, RequestDailyInfo) else RequestDailyInfo() end
     end)
 end
 
@@ -533,6 +646,7 @@ function Hunts.OnLogin()
     observedMounts = SnapshotMounts()
     scanReady = false
     if RequestRaidInfo then RequestRaidInfo() end
+    RequestDailyInfo()
     if C_Timer and C_Timer.After then
         C_Timer.After(4, function() Hunts.Sync() end)
     end
@@ -548,7 +662,10 @@ function Hunts.LoginEntry()
     local lines = {}
     for _, hunt in ipairs(Hunts.Active()) do
         if Hunts.Status(hunt.key, guid) == "available" then
-            lines[#lines + 1] = { text = hunt.info.title, detail = hunt.info.instance .. " - " .. hunt.info.boss }
+            local source = hunt.info.sourceKey and sourceRegistry[hunt.info.sourceKey]
+            local detail = source and source.daily and (hunt.info.boss .. " - daily bag not looted today")
+                or (hunt.info.instance .. " - " .. hunt.info.boss)
+            lines[#lines + 1] = { text = hunt.info.title, detail = detail }
         end
     end
     if #lines == 0 then return nil end
@@ -590,7 +707,7 @@ function Hunts.Slash(raw)
         Notify()
     elseif cmd == "goal" then
         if not catalog[target] or not validGoals[rest] then
-            Say("Usage: /wbfyi hunt goal <key> achievement|appearance|item|mount")
+            Say("Usage: /wbfyi hunt goal <key> achievement|appearance|item|mount|pet")
             return true
         end
         if target ~= "thoridal" and rest ~= "mount" then
@@ -620,7 +737,7 @@ function Hunts.Slash(raw)
     else
         Say("Collection Hunts commands:")
         Say("/wbfyi hunt add|remove <thoridal|onyxian|southwind>")
-        Say("/wbfyi hunt goal <key> achievement|appearance|item|mount")
+        Say("/wbfyi hunt goal <key> achievement|appearance|item|mount|pet")
         Say("/wbfyi hunt chars <key> all|selected")
         Say("/wbfyi hunt include|exclude <key> Character[-Realm]")
         Say("/wbfyi hunt list")
