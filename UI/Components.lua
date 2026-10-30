@@ -156,15 +156,52 @@ local function StateFill(button, setter, getter, color)
     button[setter](button, WHITE)
     local texture = button[getter](button)
     texture:ClearAllPoints()
-    texture:SetPoint("TOPLEFT", 1, -1)
-    texture:SetPoint("BOTTOMRIGHT", -1, 1)
+    texture:SetAllPoints()
     texture:SetVertexColor(color[1], color[2], color[3], color[4] or 1)
     return texture
 end
 
+-- One physical pixel in UI units. A plain 1-unit edge rounds to zero pixels
+-- on some sides at fractional UI scales, which made borders vanish.
+local function OnePixel(region)
+    if PixelUtil and PixelUtil.GetNearestPixelSize and region.GetEffectiveScale then
+        return PixelUtil.GetNearestPixelSize(1, region:GetEffectiveScale(), 1)
+    end
+    return 1
+end
+
+-- Four edge textures drawn above the fill, so no inset rounding can cover
+-- them. leftOverhang extends the box past the frame's left edge.
+local function PixelBorder(frame, layer, leftOverhang)
+    local px = OnePixel(frame)
+    local left = -(leftOverhang or 0)
+    local top = frame:CreateTexture(nil, layer)
+    top:SetPoint("TOPLEFT", left, 0)
+    top:SetPoint("TOPRIGHT", 0, 0)
+    top:SetHeight(px)
+    local bottom = frame:CreateTexture(nil, layer)
+    bottom:SetPoint("BOTTOMLEFT", left, 0)
+    bottom:SetPoint("BOTTOMRIGHT", 0, 0)
+    bottom:SetHeight(px)
+    local leftEdge = frame:CreateTexture(nil, layer)
+    leftEdge:SetPoint("TOPLEFT", left, 0)
+    leftEdge:SetPoint("BOTTOMLEFT", left, 0)
+    leftEdge:SetWidth(px)
+    local rightEdge = frame:CreateTexture(nil, layer)
+    rightEdge:SetPoint("TOPRIGHT", 0, 0)
+    rightEdge:SetPoint("BOTTOMRIGHT", 0, 0)
+    rightEdge:SetWidth(px)
+    return { top, bottom, leftEdge, rightEdge }
+end
+
+local function PaintBorder(edges, color)
+    for index = 1, #edges do
+        edges[index]:SetColorTexture(color[1], color[2], color[3], color[4] or 1)
+    end
+end
+
 local function PaintButtonEdge(button)
-    local edge = button:IsEnabled() and WBF.UI.Colors.goldDim or WBF.UI.Colors.edgeDisabled
-    button:SetBackdropBorderColor(edge[1], edge[2], edge[3], edge[4] or 1)
+    PaintBorder(button.Border, button:IsEnabled() and WBF.UI.Colors.goldDim or WBF.UI.Colors.edgeDisabled)
 end
 
 -- Themed replacement for UIPanelButtonTemplate. The button's own state
@@ -172,9 +209,10 @@ end
 -- still SetScript OnEnter/OnLeave for tooltips without losing the styling.
 function WBF.UI.Button(parent, text, width, height)
     local colors = WBF.UI.Colors
-    local button = CreateFrame("Button", nil, parent, "BackdropTemplate")
+    local button = CreateFrame("Button", nil, parent)
     button:SetSize(width or 100, height or 22)
-    button:SetBackdrop({ edgeFile = WHITE, edgeSize = 1 })
+    -- The state fills draw in ARTWORK; the border sits above them.
+    button.Border = PixelBorder(button, "OVERLAY")
     StateFill(button, "SetNormalTexture", "GetNormalTexture", colors.button)
     StateFill(button, "SetPushedTexture", "GetPushedTexture", colors.buttonPressed)
     StateFill(button, "SetDisabledTexture", "GetDisabledTexture", colors.buttonDisabled)
@@ -204,16 +242,13 @@ function WBF.UI.EditBox(parent, width, height)
     edit:SetAutoFocus(false)
     edit:SetFontObject(ChatFontNormal)
     edit:SetTextInsets(0, 4, 0, 0)
-    local edge = edit:CreateTexture(nil, "BACKGROUND", nil, 0)
-    edge:SetPoint("TOPLEFT", -5, 0)
-    edge:SetPoint("BOTTOMRIGHT", 0, 0)
-    edge:SetColorTexture(colors.goldDim[1], colors.goldDim[2], colors.goldDim[3], colors.goldDim[4] or 1)
-    local fill = edit:CreateTexture(nil, "BACKGROUND", nil, 1)
-    fill:SetPoint("TOPLEFT", edge, "TOPLEFT", 1, -1)
-    fill:SetPoint("BOTTOMRIGHT", edge, "BOTTOMRIGHT", -1, 1)
+    local fill = edit:CreateTexture(nil, "BACKGROUND")
+    fill:SetPoint("TOPLEFT", -5, 0)
+    fill:SetPoint("BOTTOMRIGHT", 0, 0)
     fill:SetColorTexture(colors.well[1], colors.well[2], colors.well[3], colors.well[4] or 1)
-    edit.Edge = edge
     edit.Fill = fill
+    edit.Border = PixelBorder(edit, "BORDER", 5)
+    PaintBorder(edit.Border, colors.goldDim)
     edit:SetScript("OnEscapePressed", function(self)
         self:ClearFocus()
     end)

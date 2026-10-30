@@ -9,6 +9,11 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 - Buttons, text boxes and scrollbars now match the WarbandFYI theme everywhere, replacing the stock red Blizzard buttons and input boxes. Buttons highlight gold on hover and dim when unavailable.
 - Status colours are consistent across Collection Hunts, the Dashboard and Resources: one green for available or collected, one amber for done or attempted, and one grey for unverified.
 
+### Fixed
+
+- Shift-clicking an item from your bags now fills the Notebook **Track Item** box, even with chat closed.
+- Blizzard's internal data-store currencies (Dragon Racing **Temp Storage** and **Scoreboard** entries, Housing **Personal Best Record** entries) no longer show up under Resources as Unknown / Other.
+
 ## 0.2.0-dev.2f — 2026-10-30
 
 ### Added

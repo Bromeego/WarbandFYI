@@ -1291,18 +1291,35 @@ function WBF.UI.NotebookAdd.Attach()
         WBF.UI.NotebookAdd.Close()
     end)
 
-    if hooksecurefunc and type(ChatEdit_InsertLink) == "function" then
-        hooksecurefunc("ChatEdit_InsertLink", function(link)
-            if not dialog:IsShown() or not state or state.screen ~= "item" or type(link) ~= "string" then
-                return
-            end
-            local itemID = WBF.NotebookSmart and WBF.NotebookSmart.ItemID and WBF.NotebookSmart.ItemID(link) or nil
-            if not itemID then
-                return
-            end
-            pasteBox:SetText(link)
-            pasteBox:SetCursorPosition(#link)
-            pasteBox:SetFocus()
-        end)
+    local function TakeItemLink(link)
+        if not dialog:IsShown() or not state or state.screen ~= "item" or type(link) ~= "string" then
+            return
+        end
+        local itemID = WBF.NotebookSmart and WBF.NotebookSmart.ItemID and WBF.NotebookSmart.ItemID(link) or nil
+        if not itemID then
+            return
+        end
+        pasteBox:SetText(link)
+        pasteBox:SetCursorPosition(#link)
+        pasteBox:SetFocus()
+    end
+    -- Bag Shift-clicks go through HandleModifiedItemClick and do not reach
+    -- ChatEdit_InsertLink while chat is closed. Newer clients route chat
+    -- links through ChatFrameUtil.InsertLink. Hook every path that exists.
+    if hooksecurefunc then
+        if type(HandleModifiedItemClick) == "function" then
+            hooksecurefunc("HandleModifiedItemClick", function(link)
+                if IsModifiedClick and not IsModifiedClick("CHATLINK") then
+                    return
+                end
+                TakeItemLink(link)
+            end)
+        end
+        if ChatFrameUtil and type(ChatFrameUtil.InsertLink) == "function" then
+            hooksecurefunc(ChatFrameUtil, "InsertLink", TakeItemLink)
+        end
+        if type(ChatEdit_InsertLink) == "function" then
+            hooksecurefunc("ChatEdit_InsertLink", TakeItemLink)
+        end
     end
 end
