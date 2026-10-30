@@ -558,13 +558,11 @@ function WBF.UI.PetBattlesView.Render(summary, context, width)
     board.EmptyText:Hide()
     local cards = MetricCards(report)
     if #cards == 0 then
-        board.EmptyText:ClearAllPoints()
-        board.EmptyText:SetPoint("TOPLEFT", board, "TOPLEFT", 0, -y)
-        board.EmptyText:SetWidth(math.min(460, width))
-        board.EmptyText:SetText("No pet battle activity in this period yet.")
-        board.EmptyText:Show()
-        board:SetHeight(y + 40)
-        return y + 40
+        local height = WBF.UI.PlaceEmptyState(board, 0, y, math.min(560, width), "No pet battles yet",
+            "Battles, captures and level-ups in this period show up here.",
+            nil, "Interface\\Icons\\INV_Pet_BattlePetTraining")
+        board:SetHeight(y + height + 16)
+        return y + height + 16
     end
 
     local gap = 8

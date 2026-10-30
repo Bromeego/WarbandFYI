@@ -67,28 +67,19 @@ local function Build(parent)
     controls.HuntButtons = {}
     controls.ActiveHeading = Label(root, "GameFontNormal", "ACTIVE")
     controls.DoneHeading = Label(root, "GameFontNormal", "COLLECTED")
-    controls.HuntHint = Label(root, "GameFontDisableSmall", "Select a hunt to view its status.")
-    controls.HuntHint:SetPoint("TOPLEFT", 12, -87)
     controls.TargetHeading = Label(root, "GameFontNormalLarge", "")
-    controls.TargetHeading:SetPoint("TOPLEFT", 338, -104)
     controls.TargetIcon = root:CreateTexture(nil, "ARTWORK")
     controls.TargetIcon:SetSize(38, 38)
-    controls.TargetIcon:SetPoint("TOPLEFT", 290, -101)
     controls.TargetIconBorder = root:CreateTexture(nil, "OVERLAY")
     controls.TargetIconBorder:SetColorTexture(WBF.UI.Colors.goldDim[1], WBF.UI.Colors.goldDim[2], WBF.UI.Colors.goldDim[3], .85)
     controls.TargetIconBorder:SetSize(40, 1)
-    controls.TargetIconBorder:SetPoint("TOPLEFT", 289, -100)
-    controls.TargetHeading:SetWidth(440)
     controls.Source = Label(root, "GameFontHighlightSmall", "")
-    controls.Source:SetPoint("TOPLEFT", 338, -130)
-    controls.Source:SetWidth(440)
 
     controls.Toggle = Button(root, 160, 28, "", function()
         if not selectedKey then return end
         WBF.CollectionHunts.SetEnabled(selectedKey, not WBF.CollectionHunts.IsEnabled(selectedKey))
         Page.Refresh()
     end)
-    controls.Toggle:SetPoint("TOPLEFT", 290, -167)
     controls.Remove = Button(root, 160, 28, "Remove hunt", function()
         if not selectedKey then return end
         if pendingRemove ~= selectedKey then
@@ -103,12 +94,10 @@ local function Build(parent)
         Page.Refresh()
         RefreshMain()
     end)
-    controls.Remove:SetPoint("TOPLEFT", 459, -167)
     controls.CancelRemove = Button(root, 90, 28, "Cancel", function()
         pendingRemove = nil
         Page.Refresh()
     end)
-    controls.CancelRemove:SetPoint("TOPLEFT", 630, -202)
     controls.Complete = Button(root, 160, 27, "Mark complete", function()
         if not selectedKey then return end
         local complete, method = WBF.CollectionHunts.Completion(selectedKey)
@@ -119,7 +108,6 @@ local function Build(parent)
         RefreshMain()
     end)
     controls.Complete:SetSize(140, 28)
-    controls.Complete:SetPoint("TOPLEFT", 630, -167)
     controls.Restore = Button(root, 252, 28, "Restore preset hunt  v", function(self)
         local hunts = WBF.CollectionHunts
         local catalog, ordered = hunts.Catalog()
@@ -140,7 +128,6 @@ local function Build(parent)
     controls.Restore:SetPoint("TOPLEFT", 12, -172)
 
     controls.GoalLabel = Label(root, "GameFontNormal", "Collection goal")
-    controls.GoalLabel:SetPoint("TOPLEFT", 290, -217)
     controls.Goal = Button(root, 200, 28, "", function(self)
         local info = WBF.CollectionHunts.Catalog()[selectedKey]
         if not info or info.defaultGoal == "mount" then return end
@@ -155,22 +142,15 @@ local function Build(parent)
         end
         Dropdown(self, options)
     end)
-    controls.Goal:SetPoint("TOPLEFT", 290, -238)
     controls.Explain = Label(root, "GameFontHighlightSmall", "")
-    controls.Explain:SetPoint("TOPLEFT", 290, -276)
-    controls.Explain:SetWidth(430)
     controls.Explain:SetWordWrap(true)
     controls.CompletedNote = Label(root, "GameFontHighlight", "")
-    controls.CompletedNote:SetPoint("TOPLEFT", 290, -325)
-    controls.CompletedNote:SetWidth(440)
     controls.CompletedNote:SetWordWrap(true)
     controls.CompletedSettings = Button(root, 235, 27, "Show hunt settings", function()
         showCompletedSettings = not showCompletedSettings
         Page.Refresh()
     end)
-    controls.CompletedSettings:SetPoint("TOPLEFT", 290, -392)
     controls.ModeLabel = Label(root, "GameFontNormal", "Farming characters")
-    controls.ModeLabel:SetPoint("TOPLEFT", 290, -338)
     controls.Mode = Button(root, 236, 28, "", function(self)
         if not selectedKey then return end
         Dropdown(self, {
@@ -178,9 +158,7 @@ local function Build(parent)
             {label="Selected characters", action=function() WBF.CollectionHunts.Settings(selectedKey).characterMode="selected"; Page.Refresh(); RefreshMain() end},
         })
     end)
-    controls.Mode:SetPoint("TOPLEFT", 290, -360)
     controls.CharHeading = Label(root, "GameFontHighlightSmall", "")
-    controls.CharHeading:SetPoint("TOPLEFT", 290, -448)
     controls.CharButtons = {}
     controls.AttemptHeadings = {}
     for i=1,3 do
@@ -191,7 +169,6 @@ local function Build(parent)
         showUnknownAttempts = not showUnknownAttempts
         Page.Refresh()
     end)
-    controls.UnknownToggle:SetPoint("TOPLEFT", 290, -505)
 
     controls.AddHeading = Label(root, "GameFontNormal", "Add a hunt")
     controls.MountSearchLabel = Label(root, "GameFontNormal", "Find a mount in your Mount Journal")
@@ -244,12 +221,8 @@ local function Build(parent)
         else controls.SourceSelect:SetText("Choose raid / boss  v") end
         Page.Refresh()
     end)
-    controls.AddHeading:SetPoint("TOPLEFT", 12, -305)
     controls.AddHint = Label(root, "GameFontHighlightSmall", "Mounts: search the Journal above. Items: Shift-click a bag item. Pets: Shift-click one in the Pet Journal. Achievements: use selected achievement.")
-    controls.AddHint:SetPoint("TOPLEFT", 12, -330)
-    controls.AddHint:SetWidth(258)
     controls.Input = WBF.UI.EditBox(root, 240, 25)
-    controls.Input:SetPoint("TOPLEFT", 19, -353)
     controls.Input:SetMaxLetters(300)
     controls.Input:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
     controls.Input:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
@@ -288,9 +261,7 @@ local function Build(parent)
         controls.Input:SetCursorPosition(#controls.Input:GetText())
         controls.Feedback:SetText("Achievement selected. Confirm the raid source and click Add Hunt.")
     end)
-    controls.UseAchievement:SetPoint("TOPLEFT", 12, -388)
     controls.SourceLabel = Label(root, "GameFontHighlightSmall", "Choose the raid / boss source (holiday bosses included):")
-    controls.SourceLabel:SetPoint("TOPLEFT", 12, -427)
     controls.SourceKey = nil
     controls.SourceSelect = Button(root, 252, 28, "Choose raid / boss  v", function(self)
         local opts={}
@@ -307,7 +278,6 @@ local function Build(parent)
         end
         Dropdown(self, opts)
     end)
-    controls.SourceSelect:SetPoint("TOPLEFT", 12, -447)
     controls.Add = Button(root, 252, 29, "Add Hunt", function()
         local input = controls.Input:GetText()
         local journalID = tonumber(input:match("^%s*mount:(%d+)%s*$"))
@@ -333,14 +303,9 @@ local function Build(parent)
             controls.Feedback:SetText(err or "Unable to add item hunt.")
         end
     end)
-    controls.Add:SetPoint("TOPLEFT", 12, -488)
     controls.Feedback=Label(root, "GameFontHighlightSmall", "")
-    controls.Feedback:SetPoint("TOPLEFT", 12, -527)
-    controls.Feedback:SetWidth(258)
     controls.Feedback:SetWordWrap(true)
     controls.Caution=Label(root, "GameFontDisableSmall", "Known item drops select their source automatically. For other items and achievements, choose the correct raid/boss manually. Achievement completion can be detected; class eligibility is unverified.")
-    controls.Caution:SetPoint("TOPLEFT", 12, -593)
-    controls.Caution:SetWidth(258)
     controls.Caution:SetWordWrap(true)
     controls.NewHunt = Button(root, 252, 30, "+ Add Hunt", function()
         adding = true
@@ -358,17 +323,12 @@ local function Build(parent)
         showAllCharacters = false
         Page.Refresh()
     end)
-    controls.EditCharacters:SetPoint("TOPLEFT", 290, -401)
     controls.ShowAll = Button(root, 190, 26, "Show all characters", function()
         showAllCharacters = not showAllCharacters
         Page.Refresh()
     end)
-    controls.ShowAll:SetPoint("TOPLEFT", 530, -401)
     controls.StatusHeading = Label(root, "GameFontNormal", "This week's attempts")
-    controls.StatusHeading:SetPoint("TOPLEFT", 290, -322)
     controls.StatusText = Label(root, "GameFontHighlightSmall", "")
-    controls.StatusText:SetPoint("TOPLEFT", 290, -346)
-    controls.StatusText:SetWidth(445)
     controls.StatusText:SetWordWrap(true)
     controls.StatusRows = {}
     local divider = root:CreateTexture(nil,"ARTWORK")
@@ -442,12 +402,104 @@ local function Place(widget, x, y)
     widget:ClearAllPoints()
     widget:SetPoint("TOPLEFT", x, -y)
 end
+
+local LIST_X, DETAIL_X = 12, 290
+local pageWidth
+
+-- Running vertical layout for the right-hand column. Each call places a
+-- widget at the cursor, shows it and moves the cursor below it, so sections
+-- stack without overlapping however the text wraps.
+local function Flow(x, y, width)
+    local flow = { x = x, y = y, width = width }
+    function flow:Put(widget, height, gap, dx)
+        Place(widget, self.x + (dx or 0), self.y)
+        widget:Show()
+        self.y = self.y + height + (gap or 8)
+    end
+    function flow:Text(fontString, gap)
+        fontString:SetWidth(self.width)
+        Place(fontString, self.x, self.y)
+        fontString:Show()
+        local height = math.ceil(fontString:GetStringHeight() or 0)
+        self.y = self.y + math.max(14, height) + (gap or 8)
+    end
+    -- Widgets side by side on one line; each item is { widget, width }.
+    function flow:Row(items, height, gap)
+        local x = self.x
+        for _, item in ipairs(items) do
+            Place(item[1], x, self.y)
+            item[1]:Show()
+            x = x + item[2] + 9
+        end
+        self.y = self.y + height + (gap or 8)
+    end
+    return flow
+end
+
 local function FormatStatus(status, daily)
     local labels = {available=SUCCESS .. "Available|r", done=daily and WARNING .. "Done today|r" or WARNING .. "Completed this week|r",
         unknown=MUTED .. "Unverified|r", collected=SUCCESS .. "Collected|r",
         excluded="Excluded", ineligible="Ineligible", closed=MUTED .. "Event not running|r"}
     return labels[status] or status
 end
+
+-- Every widget in the right-hand column. Refresh hides them all, then the
+-- flow shows the ones the current view needs.
+local DETAIL_WIDGETS = {"AddHeading", "Back", "MountSearchLabel", "MountSearch", "UseMount", "AddHint", "Input",
+    "UseAchievement", "SourceLabel", "SourceSelect", "Add", "Feedback", "Caution",
+    "TargetHeading", "Source", "TargetIcon", "TargetIconBorder", "Toggle", "Remove", "CancelRemove", "Complete",
+    "CompletedNote", "CompletedSettings", "GoalLabel", "Goal", "Explain", "ModeLabel", "Mode", "EditCharacters",
+    "ShowAll", "StatusHeading", "StatusText", "CharHeading", "UnknownToggle"}
+
+local function DrawAddForm(width)
+    local flow = Flow(DETAIL_X, 91, width)
+    controls.AddHeading:SetText("Add Collection Hunt")
+    Place(controls.Back, DETAIL_X + width - 120, 88)
+    controls.Back:Show()
+    flow:Put(controls.AddHeading, 20, 25)
+    flow:Put(controls.MountSearchLabel, 14, 9)
+    controls.MountSearch:SetWidth(width - 5)
+    flow:Put(controls.MountSearch, 26, 7, 5)
+    local matches = WBF.CollectionHunts.FindMounts(controls.MountSearch:GetText(), 6)
+    for i, b in ipairs(controls.MountResults) do
+        local entry = matches[i]
+        b.mount = entry
+        if entry then
+            b:SetText((entry.collected and "[Owned] " or "") .. entry.name)
+            b:SetWidth(width)
+            flow:Put(b, 27, 2)
+        end
+    end
+    flow.y = flow.y + 6
+    flow:Put(controls.UseMount, 27, 14)
+    controls.AddHint:SetText("Or Shift-click a bag item or Pet Journal pet, enter an item ID, or use the selected achievement.")
+    flow:Text(controls.AddHint, 10)
+    controls.Input:SetWidth(width - 5)
+    flow:Put(controls.Input, 25, 12, 5)
+    flow:Put(controls.UseAchievement, 27, 18)
+    flow:Text(controls.SourceLabel, 6)
+    controls.SourceSelect:SetWidth(math.min(340, width))
+    flow:Put(controls.SourceSelect, 28, 18)
+    flow:Put(controls.Add, 29, 14)
+    flow:Text(controls.Feedback, 14)
+    controls.Caution:SetText("The Mount Journal supplies names and collection status. Raid and boss data comes from the curated registry or your manual selection; unverified sources aren't guessed.")
+    flow:Text(controls.Caution, 0)
+    return flow.y
+end
+
+local function DrawNoHunts(width)
+    local empty = controls.Empty
+    if not empty then
+        empty = WBF.UI.EmptyState(root)
+        controls.Empty = empty
+    end
+    empty:Set("No hunts yet", "Choose + Add Hunt to track a mount, pet, item or achievement across your characters.",
+        { "QuestNormal" }, "Interface\\Icons\\INV_Misc_Spyglass_03")
+    Place(empty, DETAIL_X, 101)
+    empty:Show()
+    return 101 + empty:Layout(width)
+end
+
 function Page.Refresh()
     if not root then return end
     local hunts = WBF.CollectionHunts
@@ -474,7 +526,7 @@ function Page.Refresh()
     local row = 0
     local function DrawGroup(group, heading)
         heading:ClearAllPoints()
-        heading:SetPoint("TOPLEFT", 12, -y)
+        heading:SetPoint("TOPLEFT", LIST_X, -y)
         heading:SetText(group == active and ("ACTIVE  ("..#group..")") or ("COLLECTED  ("..#group..")"))
         heading:Show()
         y = y + 23
@@ -490,7 +542,8 @@ function Page.Refresh()
                     pendingRemove = nil
                     Page.Refresh()
                 end)
-                b.Icon = b:CreateTexture(nil, "ARTWORK")
+                -- OVERLAY keeps the icon above the button's ARTWORK fill.
+                b.Icon = b:CreateTexture(nil, "OVERLAY")
                 b.Icon:SetSize(28, 28)
                 b.Icon:SetPoint("LEFT", 7, 0)
                 b.Text = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -501,13 +554,13 @@ function Page.Refresh()
                 controls.HuntButtons[row] = b
             end
             b.huntKey = key
-            Place(b, 12, y)
+            Place(b, LIST_X, y)
             local info = catalog[key]
             local icon = HuntIcon(info)
             b.Icon:SetTexture(icon or 134400)
             b:SetText("")
             b.Text:SetText((group == complete and SUCCESS or not hunts.IsEnabled(key) and FAINT or GOLD)..info.title.."|r")
-            b:SetAlpha(selectedKey == key and 1 or .83)
+            if selectedKey == key and not adding then b:LockHighlight() else b:UnlockHighlight() end
             b:Show()
             y = y + 44
         end
@@ -517,62 +570,26 @@ function Page.Refresh()
     DrawGroup(complete, controls.DoneHeading)
     for i=row+1,#controls.HuntButtons do controls.HuntButtons[i]:Hide() end
     local restoreY=math.max(177, y + 6)
-    Place(controls.Restore, 12, restoreY)
+    Place(controls.Restore, LIST_X, restoreY)
     controls.Restore:SetShown(hiddenCount>0)
-    -- The add form is its own view; no controls or long character list underneath the overview.
-    local addWidgets = {"MountSearchLabel", "MountSearch", "UseMount", "AddHeading", "AddHint", "Input", "UseAchievement", "SourceLabel", "SourceSelect", "Add", "Feedback", "Caution"}
-    for _,name in ipairs(addWidgets) do controls[name]:SetShown(adding) end
+    local listBottom = restoreY + 65
+
+    for _, name in ipairs(DETAIL_WIDGETS) do controls[name]:Hide() end
     for _, b in ipairs(controls.MountResults) do b:Hide() end
-    controls.Back:SetShown(adding)
-    local detailWidgets={"TargetHeading","Source","Toggle","Remove","CancelRemove","Complete","GoalLabel","Goal","Explain","ModeLabel","Mode","EditCharacters","ShowAll","StatusHeading","StatusText","CharHeading","TargetIcon","TargetIconBorder","CompletedNote","CompletedSettings"}
-    for _,name in ipairs(detailWidgets) do controls[name]:SetShown(not adding and selectedKey~=nil) end
-    for _,b in ipairs(controls.CharButtons) do b:Hide() end
-    for _,h in ipairs(controls.AttemptHeadings) do h:Hide() end
-    controls.UnknownToggle:Hide()
-    for _,b in ipairs(controls.StatusRows) do b:Hide() end
+    for _, b in ipairs(controls.CharButtons) do b:Hide() end
+    for _, h in ipairs(controls.AttemptHeadings) do h:Hide() end
+    if controls.Empty then controls.Empty:Hide() end
+    local width = math.max(440, (pageWidth or 760) - DETAIL_X - 12)
+
+    -- The add form is its own view; no controls or long character list underneath the overview.
     if adding then
-        controls.AddHeading:SetText("Add Collection Hunt")
-        Place(controls.AddHeading, 290, 91)
-        Place(controls.Back, 608, 91)
-        Place(controls.MountSearchLabel, 290, 136)
-        Place(controls.MountSearch, 300, 159)
-        local matches = WBF.CollectionHunts.FindMounts(controls.MountSearch:GetText(), 6)
-        for i,b in ipairs(controls.MountResults) do
-            local entry = matches[i]
-            b.mount = entry
-            if entry then
-                b:SetText((entry.collected and "[Owned] " or "") .. entry.name)
-                Place(b, 290, 192 + (i-1)*29)
-                b:Show()
-            end
-        end
-        local searchBottom = 192 + #matches * 29
-        Place(controls.UseMount, 290, searchBottom+8)
-        controls.AddHint:SetText("Or Shift-click a bag item or Pet Journal pet, enter an item ID, or use the selected achievement.")
-        controls.AddHint:SetWidth(440)
-        Place(controls.AddHint, 290, searchBottom+49)
-        controls.Input:SetWidth(410)
-        Place(controls.Input, 300, searchBottom+83)
-        Place(controls.UseAchievement, 290, searchBottom+120)
-        Place(controls.SourceLabel, 290, searchBottom+166)
-        controls.SourceSelect:SetWidth(340)
-        Place(controls.SourceSelect, 290, searchBottom+187)
-        Place(controls.Add, 290, searchBottom+233)
-        controls.Feedback:SetWidth(425)
-        Place(controls.Feedback, 290, searchBottom+277)
-        controls.Caution:SetWidth(425)
-        controls.Caution:SetText("The Mount Journal supplies names and collection status. Raid and boss data comes from the curated registry or your manual selection; unverified sources aren't guessed.")
-        Place(controls.Caution, 290, searchBottom+344)
-        root:SetHeight(math.max(searchBottom+450, restoreY+65))
+        local bottom = DrawAddForm(math.min(width, 440))
+        root:SetHeight(math.max(bottom + 40, listBottom))
         return
     end
     local info = selectedKey and catalog[selectedKey]
     if not info then
-        controls.StatusHeading:Show()
-        controls.StatusHeading:SetText("No hunts yet")
-        controls.StatusText:Show()
-        controls.StatusText:SetText("Choose + Add Hunt to start tracking a collectible.")
-        root:SetHeight(610)
+        root:SetHeight(math.max(610, DrawNoHunts(math.min(width, 520)) + 40, listBottom))
         return
     end
     local settings=hunts.Settings(selectedKey)
@@ -580,35 +597,51 @@ function Page.Refresh()
     local source = info.sourceKey and hunts.Source(info.sourceKey)
     local daily = source and source.daily or false
     local finished, completionMethod = hunts.Completion(selectedKey)
+
+    Place(controls.TargetIcon, DETAIL_X, 101)
+    controls.TargetIcon:SetTexture(HuntIcon(info) or 134400)
+    controls.TargetIcon:Show()
+    Place(controls.TargetIconBorder, DETAIL_X - 1, 100)
+    controls.TargetIconBorder:Show()
     controls.TargetHeading:SetText(info.title)
-    local icon = HuntIcon(info)
-    controls.TargetIcon:SetTexture(icon or 134400)
-    controls.CompletedNote:SetShown(finished)
-    controls.CompletedSettings:SetShown(finished)
-    controls.CompletedSettings:SetText(showCompletedSettings and "Hide hunt settings" or "Show hunt settings")
-    controls.CompletedNote:SetText(finished and (SUCCESS .. "GOAL ACHIEVED|r\n" ..
-        (completionMethod == "manual" and "Marked complete manually. You can reopen this hunt." or
-            "Confirmed by WoW. This collection is no longer included in farming reminders.")) or "")
-    local showSettings = not finished or showCompletedSettings
-    controls.GoalLabel:SetShown(showSettings)
-    controls.Goal:SetShown(showSettings)
-    controls.Explain:SetShown(showSettings)
-    controls.ModeLabel:SetShown(showSettings)
-    controls.Mode:SetShown(showSettings)
-    controls.EditCharacters:SetShown(showSettings)
-    controls.StatusHeading:SetShown(showSettings)
-    controls.StatusText:SetShown(showSettings)
-    controls.CharHeading:SetShown(showSettings)
+    controls.TargetHeading:SetWidth(width - 48)
+    Place(controls.TargetHeading, DETAIL_X + 48, 104)
+    controls.TargetHeading:Show()
+    controls.Source:SetText(info.instance.."  —  "..info.boss)
+    controls.Source:SetWidth(width - 48)
+    Place(controls.Source, DETAIL_X + 48, 130)
+    controls.Source:Show()
+
+    local flow = Flow(DETAIL_X, 167, width)
+    controls.Toggle:SetText(hunts.IsEnabled(selectedKey) and "Pause tracking" or "Resume tracking")
+    controls.Remove:SetText(pendingRemove == selectedKey and "Confirm remove?" or "Remove hunt")
     controls.Complete:SetText(finished and "Reopen hunt" or "Mark complete")
     controls.Complete:SetEnabled(not (finished and completionMethod ~= "manual"))
-    controls.Complete:SetShown(not adding and selectedKey ~= nil)
-    controls.Source:SetText(info.instance.."  —  "..info.boss)
-    controls.Toggle:SetText(hunts.IsEnabled(selectedKey) and "Pause tracking" or "Resume tracking")
-    controls.CancelRemove:SetShown(pendingRemove == selectedKey)
-    controls.Remove:SetText(pendingRemove == selectedKey and "Confirm remove?" or "Remove hunt")
+    -- While a remove is pending, Cancel takes the third slot.
+    flow:Row({
+        { controls.Toggle, 160 },
+        { controls.Remove, 160 },
+        pendingRemove == selectedKey and { controls.CancelRemove, 90 } or { controls.Complete, 140 },
+    }, 28, 18)
+
+    if finished then
+        controls.CompletedNote:SetText(SUCCESS .. "GOAL ACHIEVED|r\n" ..
+            (completionMethod == "manual" and "Marked complete manually. You can reopen this hunt." or
+                "Confirmed by WoW. This collection is no longer included in farming reminders."))
+        flow:Text(controls.CompletedNote, 10)
+        controls.CompletedSettings:SetText(showCompletedSettings and "Hide hunt settings" or "Show hunt settings")
+        flow:Put(controls.CompletedSettings, 27, 18)
+    end
+    local showSettings = not finished or showCompletedSettings
+    if not showSettings then
+        root:SetHeight(math.max(610, flow.y + 40, listBottom))
+        return
+    end
+
+    flow:Put(controls.GoalLabel, 14, 6)
     controls.Goal:SetEnabled(info.defaultGoal~="mount")
     controls.Goal:SetText((settings.goal or "item"):gsub("^%l",string.upper).."  v")
-    controls.Mode:SetText((settings.characterMode=="selected" and "Selected characters" or "All eligible characters").."  v")
+    flow:Put(controls.Goal, 28, 8)
     controls.Explain:SetText(finished and
         (completionMethod == "manual" and "Marked complete manually. Reopen if needed." or "Collection goal confirmed by WoW. No further runs required.") or
         selectedKey=="thoridal" and settings.goal=="achievement" and
@@ -616,6 +649,16 @@ function Page.Refresh()
         daily and "The daily loot bag is tracked per character and resets each day." or
         settings.goal=="mount" and "Available raid attempts are tracked per character." or
         "Eligibility is unverified for this goal unless WarbandFYI has an explicit rule.")
+    flow:Text(controls.Explain, 18)
+    flow:Put(controls.ModeLabel, 14, 6)
+    controls.Mode:SetText((settings.characterMode=="selected" and "Selected characters" or "All eligible characters").."  v")
+    flow:Put(controls.Mode, 28, 8)
+    controls.EditCharacters:SetText(editingCharacters and "Done editing characters" or "Edit farming characters")
+    controls.ShowAll:SetText(showAllCharacters and "Show relevant only" or "Show all characters")
+    local editRow = { { controls.EditCharacters, 235 } }
+    if editingCharacters then editRow[2] = { controls.ShowAll, 190 } end
+    flow:Row(editRow, 27, 22)
+
     -- Show actionable characters, successful attempts and unverified counts separately.
     local available, done, unknown, closed = {}, {}, {}, 0
     local characters = SortedCharacters()
@@ -629,28 +672,27 @@ function Page.Refresh()
         end
     end
     controls.StatusHeading:SetText(finished and "Collection complete" or (daily and "Today's attempts" or "This week's attempts"))
-    Place(controls.StatusHeading, 290, 325)
+    flow:Put(controls.StatusHeading, 14, 6)
     controls.StatusText:SetText(finished and SUCCESS .. "Goal achieved|r  - farming reminders stopped" or
         (closed>0 and #available==0 and #done==0 and #unknown==0) and (MUTED..info.instance.." is not running right now|r") or
         (SUCCESS..#available.." available|r   •   "..#done..(daily and " done today" or " attempted").."   •   "..#unknown.." unverified"))
-    Place(controls.StatusText, 290, 349)
-    -- Compact non-editing preview: never list excluded/ineligible characters.
-    controls.EditCharacters:SetText(editingCharacters and "Done editing characters" or "Edit farming characters")
-    controls.EditCharacters:SetShown(showSettings)
-    controls.ShowAll:SetShown(showSettings and editingCharacters)
-    controls.ShowAll:SetText(showAllCharacters and "Show relevant only" or "Show all characters")
-    local listY = 450
+    flow:Text(controls.StatusText, 18)
+
+    -- Character lists run in two columns below the status line.
+    local listY = flow.y
+    local colWidth = math.floor((width - 9) / 2)
+    local col2X = DETAIL_X + colWidth + 9
     local candidates = {}
     local rowSpacing = 32
     local maxBottom = listY
-    local function AddRow(char, status, x, y, width)
-        candidates[#candidates+1]={char=char,status=status,x=x,y=y,width=width}
+    local function AddRow(char, status, x, y, rowWidth)
+        candidates[#candidates+1]={char=char,status=status,x=x,y=y,width=rowWidth}
         maxBottom = math.max(maxBottom, y+rowSpacing)
     end
-    if showSettings and editingCharacters then
+    if editingCharacters then
         controls.CharHeading:SetText(settings.characterMode=="selected" and "Select farming characters" or "Switch to Selected characters to edit the roster")
+        Place(controls.CharHeading, DETAIL_X, listY)
         controls.CharHeading:Show()
-        Place(controls.CharHeading, 290, listY)
         local eligible = {}
         for _,char in ipairs(characters) do
             if char.guid then
@@ -662,16 +704,15 @@ function Page.Refresh()
         end
         for i,entry in ipairs(eligible) do
             local col=(i-1)%2
-            local row=math.floor((i-1)/2)
-            AddRow(entry.char,entry.status,290+col*254,listY+30+row*rowSpacing,245)
+            local listRow=math.floor((i-1)/2)
+            AddRow(entry.char,entry.status,col==0 and DETAIL_X or col2X,listY+30+listRow*rowSpacing,colWidth)
         end
         if #eligible==0 then controls.CharHeading:SetText("No matching characters") end
     elseif not finished then
-        controls.CharHeading:Hide()
         -- The first two groups are always useful; unverified alts are opt-in.
         local groups={
-            {label="AVAILABLE  ("..#available..")",items=available,color=SUCCESS,x=290},
-            {label=(daily and "DONE TODAY  (" or "ATTEMPTED THIS WEEK  (")..#done..")",items=done,color=WARNING,x=557},
+            {label="AVAILABLE  ("..#available..")",items=available,color=SUCCESS,x=DETAIL_X},
+            {label=(daily and "DONE TODAY  (" or "ATTEMPTED THIS WEEK  (")..#done..")",items=done,color=WARNING,x=col2X},
         }
         local biggest=0
         for i,group in ipairs(groups) do
@@ -680,29 +721,31 @@ function Page.Refresh()
             Place(heading,group.x,listY)
             heading:Show()
             for j,char in ipairs(group.items) do
-                AddRow(char,i==1 and "available" or "done",group.x,listY+30+(j-1)*rowSpacing,255)
+                AddRow(char,i==1 and "available" or "done",group.x,listY+30+(j-1)*rowSpacing,colWidth)
             end
             biggest=math.max(biggest,#group.items)
         end
         local unknownY=listY+39+math.max(1,biggest)*rowSpacing
         controls.UnknownToggle:SetText((showUnknownAttempts and "Hide" or "Show").." unverified ("..#unknown..")")
-        Place(controls.UnknownToggle,290,unknownY)
+        Place(controls.UnknownToggle,DETAIL_X,unknownY)
         controls.UnknownToggle:SetShown(#unknown>0)
         maxBottom=math.max(maxBottom,unknownY+30)
         if showUnknownAttempts and #unknown>0 then
             local h=controls.AttemptHeadings[3]
             h:SetText((daily and MUTED .. "NOT YET VERIFIED — log in on each character today to check its bag|r" or MUTED .. "NOT YET VERIFIED — visit each character to update its lockout|r"))
-            Place(h,290,unknownY+38)
+            Place(h,DETAIL_X,unknownY+38)
             h:Show()
             for i,char in ipairs(unknown) do
                 local col=(i-1)%2
-                local row=math.floor((i-1)/2)
-                AddRow(char,"unknown",290+col*254,unknownY+68+row*rowSpacing,245)
+                local listRow=math.floor((i-1)/2)
+                AddRow(char,"unknown",col==0 and DETAIL_X or col2X,unknownY+68+listRow*rowSpacing,colWidth)
             end
         end
     else
         controls.CharHeading:SetText("Collection complete — no further runs needed")
-        Place(controls.CharHeading,290,listY)
+        Place(controls.CharHeading,DETAIL_X,listY)
+        controls.CharHeading:Show()
+        maxBottom = listY + 20
     end
     for i,entry in ipairs(candidates) do
         local char,status=entry.char,entry.status
@@ -729,10 +772,10 @@ function Page.Refresh()
         b:SetEnabled(editingCharacters and settings.characterMode=="selected")
         b:Show()
     end
-    for i=#candidates+1,#controls.CharButtons do controls.CharButtons[i]:Hide() end
-    root:SetHeight(math.max(620, (finished and not showCompletedSettings) and 610 or maxBottom+55, restoreY+65))
+    root:SetHeight(math.max(620, maxBottom+55, listBottom))
 end
 function Page.Render(width)
+    pageWidth = width
     Page.Refresh()
     return root and root:GetHeight() or 800
 end

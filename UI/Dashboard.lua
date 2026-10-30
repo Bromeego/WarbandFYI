@@ -9,7 +9,6 @@ local root
 local titleText
 local rangeText
 local sampleText
-local noteText
 local viewAll
 local prevMonth
 local nextMonth
@@ -31,11 +30,6 @@ local function EnsureChrome()
     sampleText:SetJustifyH("LEFT")
     sampleText:SetTextColor(WBF.UI.Colors.gold[1], WBF.UI.Colors.gold[2], WBF.UI.Colors.gold[3])
     sampleText:SetText("Sample history is mixed into this view. /wbfyi clearsample removes it.")
-
-    noteText = root:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    noteText:SetJustifyH("LEFT")
-    noteText:SetWordWrap(true)
-    noteText:SetTextColor(WBF.UI.Colors.muted[1], WBF.UI.Colors.muted[2], WBF.UI.Colors.muted[3])
 
     viewAll = CreateFrame("Button", nil, root)
     viewAll:SetSize(140, 18)
@@ -110,7 +104,6 @@ local function HideChrome()
     titleText:Hide()
     rangeText:Hide()
     sampleText:Hide()
-    noteText:Hide()
     viewAll:Hide()
     if prevMonth then
         prevMonth:Hide()
@@ -1076,12 +1069,10 @@ function WBF.UI.Dashboard.Render(summary, width)
         end
         y = DrawCharacterFYIs(root, y, width)
         y = DrawCollectionHunts(root, y, width)
-        noteText:ClearAllPoints()
-        noteText:SetPoint("TOPLEFT", root, "TOPLEFT", 0, -(y + 12))
-        noteText:SetWidth(math.min(460, width))
-        noteText:SetText(summary.emptyReason or "Nothing recorded for this period yet.")
-        noteText:Show()
-        return y + 80
+        local height = WBF.UI.PlaceEmptyState(root, 0, y + 12, math.min(560, width), "Nothing recorded yet",
+            summary.emptyReason or "Play a session and your progress shows up here. /wbfyi sample previews the dashboard.",
+            { "auctionhouse-icon-clock" }, "Interface\\Icons\\INV_Misc_PocketWatch_01")
+        return y + 12 + height + 16
     end
 
     local playedNow, _, liveGuid = PlayedNow(summary)
@@ -1175,12 +1166,10 @@ function WBF.UI.Dashboard.Render(summary, width)
     local showActivity = shownActivity > 0
 
     if not summary.hasActivity then
-        noteText:ClearAllPoints()
-        noteText:SetPoint("TOPLEFT", root, "TOPLEFT", 0, -y)
-        noteText:SetWidth(math.min(520, width))
-        noteText:SetText("Nothing recorded for this period yet. Play a session, then check Current Session. /wbfyi sample previews the dashboard.")
-        noteText:Show()
-        y = y + 48
+        local height = WBF.UI.PlaceEmptyState(root, 0, y, math.min(560, width), "Nothing recorded yet",
+            "Play a session, then check Current Session. /wbfyi sample previews the dashboard.",
+            { "auctionhouse-icon-clock" }, "Interface\\Icons\\INV_Misc_PocketWatch_01")
+        y = y + height + 16
     end
 
     if showTiles or showActivity then

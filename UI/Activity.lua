@@ -5,7 +5,6 @@ WBF.UI.Activity = {}
 local root
 local titleText
 local detailText
-local emptyText
 
 function WBF.UI.Activity.Attach(parent)
     root = parent
@@ -36,14 +35,6 @@ function WBF.UI.Activity.Attach(parent)
             WBF.UI.frame:OpenDetail("petBattles", { period = period, warband = true })
         end
     end)
-
-    emptyText = root:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    emptyText:SetPoint("TOPLEFT", detailText, "BOTTOMLEFT", 0, -16)
-    emptyText:SetWidth(460)
-    emptyText:SetJustifyH("LEFT")
-    emptyText:SetWordWrap(true)
-    emptyText:SetTextColor(WBF.UI.Colors.muted[1], WBF.UI.Colors.muted[2], WBF.UI.Colors.muted[3])
-    emptyText:Hide()
 end
 
 function WBF.UI.Activity.Render(width)
@@ -76,11 +67,12 @@ function WBF.UI.Activity.Render(width)
 
     local limit = math.min(150, #list)
     if limit == 0 then
-        emptyText:SetText("No activity recorded yet.")
-        emptyText:Show()
-        return 80
+        local height = WBF.UI.PlaceEmptyState(root, 0, 40, math.min(width, 560), "No activity yet",
+            filter and "Nothing recorded for this character yet. Their quests, levels and collections show up here as they play."
+                or "Quests, levels, collections and currency changes show up here as you play.",
+            { "QuestNormal" }, "Interface\\Icons\\INV_Misc_Book_09")
+        return 40 + height + 8
     end
-    emptyText:Hide()
 
     for index = 1, limit do
         local event = list[index]
