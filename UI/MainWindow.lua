@@ -11,21 +11,6 @@ local PERIOD = {
     warband = true,
 }
 
-local function UpdateScrollBar(scroll, bar)
-    local range = scroll:GetVerticalScrollRange()
-    if range <= 1 then
-        bar:Hide()
-        scroll:SetVerticalScroll(0)
-        return
-    end
-    bar:Show()
-    bar.updating = true
-    bar:SetMinMaxValues(0, range)
-    local value = math.min(scroll:GetVerticalScroll(), range)
-    bar:SetValue(value)
-    bar.updating = false
-end
-
 function WBF.UI.MainWindow.Create()
     if WBF.UI.frame then
         return WBF.UI.frame
@@ -132,20 +117,14 @@ function WBF.UI.MainWindow.Create()
     buttons:SetPoint("BOTTOMRIGHT", content, "BOTTOMRIGHT", 0, 0)
     buttons:SetHeight(28)
 
-    local settingsButton = CreateFrame("Button", nil, buttons, "UIPanelButtonTemplate")
-    settingsButton:SetSize(100, 22)
+    local settingsButton = WBF.UI.Button(buttons, "Settings", 100, 22)
     settingsButton:SetPoint("BOTTOMRIGHT", buttons, "BOTTOMRIGHT", 0, 0)
-    settingsButton:SetText("Settings")
 
-    local warbandButton = CreateFrame("Button", nil, buttons, "UIPanelButtonTemplate")
-    warbandButton:SetSize(100, 22)
+    local warbandButton = WBF.UI.Button(buttons, "Warband", 100, 22)
     warbandButton:SetPoint("RIGHT", settingsButton, "LEFT", -8, 0)
-    warbandButton:SetText("Warband")
 
-    local sessionButton = CreateFrame("Button", nil, buttons, "UIPanelButtonTemplate")
-    sessionButton:SetSize(120, 22)
+    local sessionButton = WBF.UI.Button(buttons, "View Session", 120, 22)
     sessionButton:SetPoint("RIGHT", warbandButton, "LEFT", -8, 0)
-    sessionButton:SetText("View Session")
 
     local scroll = CreateFrame("ScrollFrame", nil, content)
     scroll:SetPoint("TOPLEFT", content, "TOPLEFT", 0, 0)
@@ -157,27 +136,9 @@ function WBF.UI.MainWindow.Create()
     scrollChild:SetSize(400, 400)
     scroll:SetScrollChild(scrollChild)
 
-    local bar = CreateFrame("Slider", nil, scroll)
-    bar:SetOrientation("VERTICAL")
-    bar:SetWidth(8)
+    local bar = WBF.UI.ScrollBar(scroll)
     bar:SetPoint("TOPRIGHT", scroll, "TOPRIGHT", 0, -2)
     bar:SetPoint("BOTTOMRIGHT", scroll, "BOTTOMRIGHT", 0, 2)
-    bar:SetValueStep(1)
-    if bar.SetObeyStepOnDrag then
-        bar:SetObeyStepOnDrag(true)
-    end
-    bar:SetMinMaxValues(0, 1)
-    local thumb = bar:CreateTexture(nil, "OVERLAY")
-    thumb:SetColorTexture(WBF.UI.Colors.gold[1], WBF.UI.Colors.gold[2], WBF.UI.Colors.gold[3], 0.85)
-    thumb:SetSize(8, 36)
-    bar:SetThumbTexture(thumb)
-    bar:Hide()
-    bar:SetScript("OnValueChanged", function(self, value)
-        if self.updating then
-            return
-        end
-        scroll:SetVerticalScroll(value)
-    end)
 
     local function MakeRoot()
         local child = CreateFrame("Frame", nil, scrollChild)
@@ -437,11 +398,11 @@ function WBF.UI.MainWindow.Create()
         if C_Timer and C_Timer.After then
             C_Timer.After(0, function()
                 if scroll:IsShown() then
-                    UpdateScrollBar(scroll, bar)
+                    WBF.UI.SyncScrollBar(scroll, bar)
                 end
             end)
         else
-            UpdateScrollBar(scroll, bar)
+            WBF.UI.SyncScrollBar(scroll, bar)
         end
     end
 
@@ -621,7 +582,7 @@ function WBF.UI.MainWindow.Create()
                     if frame:IsShown() and (not frame.detailStack or #frame.detailStack == 0) then
                         local range = scroll:GetVerticalScrollRange() or 0
                         scroll:SetVerticalScroll(math.min(math.max(rootOrigin.scroll, 0), range))
-                        UpdateScrollBar(scroll, bar)
+                        WBF.UI.SyncScrollBar(scroll, bar)
                     end
                 end)
             end
@@ -691,7 +652,7 @@ function WBF.UI.MainWindow.Create()
         local current = scroll:GetVerticalScroll()
         local nextValue = math.min(range, math.max(0, current - delta * 36))
         scroll:SetVerticalScroll(nextValue)
-        UpdateScrollBar(scroll, bar)
+        WBF.UI.SyncScrollBar(scroll, bar)
     end
 
     -- Used by views such as Notebook when navigating to a specific result/FYI
@@ -705,7 +666,7 @@ function WBF.UI.MainWindow.Create()
             end
             local range = scroll:GetVerticalScrollRange()
             scroll:SetVerticalScroll(math.min(range, wanted))
-            UpdateScrollBar(scroll, bar)
+            WBF.UI.SyncScrollBar(scroll, bar)
         end
         apply()
         if C_Timer and C_Timer.After then

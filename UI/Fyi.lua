@@ -325,34 +325,9 @@ local function EnsurePopup()
     -- A visible scrollbar makes long FYI lists discoverable. The popup grows
     -- with its content first, then this bar appears once the screen-height cap
     -- is reached.
-    popupBar = CreateFrame("Slider", nil, popup)
-    popupBar:SetOrientation("VERTICAL")
-    popupBar:SetWidth(8)
+    popupBar = WBF.UI.ScrollBar(popupScroll, popup)
     popupBar:SetPoint("TOPLEFT", popupScroll, "TOPRIGHT", 2, -2)
     popupBar:SetPoint("BOTTOMLEFT", popupScroll, "BOTTOMRIGHT", 2, 2)
-    popupBar:SetValueStep(1)
-    if popupBar.SetObeyStepOnDrag then
-        popupBar:SetObeyStepOnDrag(true)
-    end
-    popupBar:SetMinMaxValues(0, 1)
-    local track = popupBar:CreateTexture(nil, "BACKGROUND")
-    track:SetPoint("TOP", 0, 0)
-    track:SetPoint("BOTTOM", 0, 0)
-    track:SetWidth(2)
-    track:SetColorTexture(WBF.UI.Colors.line[1], WBF.UI.Colors.line[2], WBF.UI.Colors.line[3], 0.45)
-    popupBar.Track = track
-    local thumb = popupBar:CreateTexture(nil, "OVERLAY")
-    thumb:SetColorTexture(WBF.UI.Colors.gold[1], WBF.UI.Colors.gold[2], WBF.UI.Colors.gold[3], 0.9)
-    thumb:SetSize(8, 36)
-    popupBar:SetThumbTexture(thumb)
-    popupBar.Thumb = thumb
-    popupBar:SetScript("OnValueChanged", function(self, value)
-        if self.updating then
-            return
-        end
-        popupScroll:SetVerticalScroll(value)
-    end)
-    popupBar:Hide()
 
     local function hideContext()
         local ids = popup.ids or {}
@@ -1044,10 +1019,8 @@ local function EnsureSetup()
     setupContextLabel:SetText("Event")
     Color(setupContextLabel, WBF.UI.Colors.muted)
 
-    setupSearch = CreateFrame("EditBox", nil, setup, "InputBoxTemplate")
-    setupSearch:SetSize(270, 20)
+    setupSearch = WBF.UI.EditBox(setup, 270, 20)
     setupSearch:SetPoint("TOPLEFT", 18, -118)
-    setupSearch:SetAutoFocus(false)
     if WBF.UI.KeepKeyboard then
         WBF.UI.KeepKeyboard(setupSearch)
     end

@@ -3,13 +3,7 @@ WBF.UI.NotebookPets = {}
 local dialog, search, status, listing, entries, activeBlock, generation
 local page, previous, nextPage = 1
 local function Button(parent, label)
-    local b = CreateFrame("Button", nil, parent, "BackdropTemplate")
-    b:SetSize(85, 22)
-    WBF.UI.Paint(b, WBF.UI.Colors.card, WBF.UI.Colors.goldDim)
-    local font = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    font:SetPoint("CENTER"); font:SetText(label)
-    b.Label = font
-    return b
+    return WBF.UI.Button(parent, label, 85, 22)
 end
 
 function WBF.UI.NotebookPets.Draw(frame, block, width, hideCompleted)
@@ -18,7 +12,7 @@ function WBF.UI.NotebookPets.Draw(frame, block, width, hideCompleted)
     frame.Text:SetPoint("TOPLEFT", 9, -10)
     frame.Text:SetWidth(math.max(80, width - 140))
     frame.Text:SetMaxLines(1)
-    frame.Text:SetTextColor(1, 0.82, 0.45)
+    frame.Text:SetTextColor(WBF.UI.Colors.gold[1], WBF.UI.Colors.gold[2], WBF.UI.Colors.gold[3])
     frame.Sub:Hide(); frame.Hint:Hide()
     if not frame.PetAdd then
         frame.PetAdd = Button(frame, "+ Add pet")
@@ -161,9 +155,8 @@ local function EnsureDialog()
     local close = Button(dialog, "Close")
     close:SetPoint("TOPRIGHT", -12, -12)
     close:SetScript("OnClick", function() dialog:Hide() end)
-    search = CreateFrame("EditBox", nil, dialog, "InputBoxTemplate")
-    search:SetSize(360, 25); search:SetPoint("TOPLEFT", 21, -55)
-    search:SetAutoFocus(false); search:SetFontObject(GameFontHighlight)
+    search = WBF.UI.EditBox(dialog, 360, 25); search:SetPoint("TOPLEFT", 21, -55)
+    search:SetFontObject(GameFontHighlight)
     if WBF.UI.KeepKeyboard then WBF.UI.KeepKeyboard(search) end
     search:SetScript("OnEscapePressed", function() dialog:Hide() end)
     search:SetScript("OnTextChanged", function(self, user)

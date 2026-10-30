@@ -2,6 +2,9 @@ local _, WBF = ...
 
 WBF.UI.Dashboard = {}
 
+local SUCCESS = WBF.UI.Hex(WBF.UI.Colors.success)
+local WARNING = WBF.UI.Hex(WBF.UI.Colors.warning)
+
 local root
 local titleText
 local rangeText
@@ -26,7 +29,7 @@ local function EnsureChrome()
 
     sampleText = root:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     sampleText:SetJustifyH("LEFT")
-    sampleText:SetTextColor(0.95, 0.78, 0.35)
+    sampleText:SetTextColor(WBF.UI.Colors.gold[1], WBF.UI.Colors.gold[2], WBF.UI.Colors.gold[3])
     sampleText:SetText("Sample history is mixed into this view. /wbfyi clearsample removes it.")
 
     noteText = root:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
@@ -63,7 +66,7 @@ local function EnsureChrome()
         button.allowed = true
         button:SetScript("OnEnter", function(self)
             if self.allowed then
-                self.Label:SetTextColor(1, 0.97, 0.82)
+                self.Label:SetTextColor(WBF.UI.Colors.bright[1], WBF.UI.Colors.bright[2], WBF.UI.Colors.bright[3])
             end
             if GameTooltip then
                 GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -212,19 +215,10 @@ local function ResourceWidgets(summary)
         end
         local subline
         if earned > 0 and spent > 0 then
-            local function tint(color, text)
-                return string.format(
-                    "|cff%02x%02x%02x%s|r",
-                    math.floor(color[1] * 255 + 0.5),
-                    math.floor(color[2] * 255 + 0.5),
-                    math.floor(color[3] * 255 + 0.5),
-                    text
-                )
-            end
             -- One line each so neither figure is clipped by the card width.
-            subline = tint(WBF.UI.Colors.green, WBF.Format.Signed(earned) .. " gained")
+            subline = WBF.UI.ColorText(WBF.UI.Colors.green, WBF.Format.Signed(earned) .. " gained")
                 .. "\n"
-                .. tint(WBF.UI.Colors.red, WBF.Format.Signed(-spent) .. " spent")
+                .. WBF.UI.ColorText(WBF.UI.Colors.red, WBF.Format.Signed(-spent) .. " spent")
         end
         if earned > 0 or spent > 0 then
             tooltip = tooltip .. "  Earned " .. WBF.Format.Signed(earned) .. "."
@@ -955,9 +949,7 @@ local function DrawCollectionHunts(parent, y, width)
     local active = WBF.CollectionHunts.Active()
     WBF.UI.AcquireSection(parent, "Collection Hunts", 0, y, width)
     local manage = WBF.UI.Acquire(WBF.UI.Pool("dashboardHuntsManage", function(owner)
-        local button = CreateFrame("Button", nil, owner, "UIPanelButtonTemplate")
-        button:SetSize(135, 22)
-        button:SetText("Manage Hunts")
+        local button = WBF.UI.Button(owner, "Manage Hunts", 135, 22)
         button:SetScript("OnClick", function() WBF.UI.CollectionHunts.Open() end)
         return button
     end), parent)
@@ -1004,10 +996,10 @@ local function DrawCollectionHunts(parent, y, width)
         row:SetWidth(width)
         row:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -y)
         local thisStatus = current and WBF.CollectionHunts.Status(hunt.key, current) or "unknown"
-        local ownLabels = {available="|cff77e39bReady on this character|r", done="|cffffcf67Attempted this week|r", collected="|cff77e39bCollected|r", unknown="Not yet verified", excluded="Not selected", ineligible="Not eligible"}
+        local ownLabels = {available=SUCCESS .. "Ready on this character|r", done=WARNING .. "Attempted this week|r", collected=SUCCESS .. "Collected|r", unknown="Not yet verified", excluded="Not selected", ineligible="Not eligible"}
         local own = ownLabels[thisStatus] or "Unknown"
-        local summary = thisStatus == "collected" and "|cff77e39bGoal achieved|r" or
-            ("|cff77e39b" .. available .. " available|r   •   " .. done .. " attempted")
+        local summary = thisStatus == "collected" and SUCCESS .. "Goal achieved|r" or
+            (SUCCESS .. available .. " available|r   •   " .. done .. " attempted")
         row.Label:SetText(hunt.info.title .. "   |   " .. own .. "   •   " .. summary)
         y = y + 24
     end

@@ -4,6 +4,11 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 
 ## Unreleased
 
+### Changed
+
+- Buttons, text boxes and scrollbars now match the WarbandFYI theme everywhere, replacing the stock red Blizzard buttons and input boxes. Buttons highlight gold on hover and dim when unavailable.
+- Status colours are consistent across Collection Hunts, the Dashboard and Resources: one green for available or collected, one amber for done or attempted, and one grey for unverified.
+
 ## 0.2.0-dev.2f — 2026-10-30
 
 ### Added

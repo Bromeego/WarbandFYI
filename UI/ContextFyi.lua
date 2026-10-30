@@ -108,9 +108,7 @@ local function Caption(text, x, y, width)
 end
 
 local function Box(parent, width)
-    local edit = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
-    edit:SetAutoFocus(false)
-    edit:SetSize(width, 22)
+    local edit = WBF.UI.EditBox(parent, width, 22)
     edit:SetFontObject(GameFontHighlightSmall)
     edit:SetTextColor(WBF.UI.Colors.cream[1], WBF.UI.Colors.cream[2], WBF.UI.Colors.cream[3])
     WBF.UI.BindWheel(edit)
