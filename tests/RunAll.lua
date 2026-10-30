@@ -7,6 +7,7 @@ local TESTS = {
     "CharacterDiscoveryTest",
     "CollectionHuntsTest",
     "ContextFyiTest",
+    "FyiQueueTest",
     "GoldTrackerTest",
     "HousingDecorTest",
     "LifetimeRetentionTest",
