@@ -4,6 +4,8 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 
 ## Unreleased
 
+## 0.2.0-dev.2g — 2026-10-30
+
 ### Changed
 
 - Buttons, text boxes and scrollbars now match the WarbandFYI theme everywhere, replacing the stock red Blizzard buttons and input boxes. Buttons highlight gold on hover and dim when unavailable.
