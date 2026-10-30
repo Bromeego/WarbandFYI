@@ -16,7 +16,36 @@ WBF.UI.Colors = {
     blue = { 0.11, 0.34, 0.72, 0.96 },
     white = { 1, 1, 1 },
     line = { 0.72, 0.58, 0.30, 0.55 },
+    -- Status text: success for available/collected, warning for done or
+    -- attempted, faint for switched-off entries.
+    success = { 0.47, 0.89, 0.61 },
+    warning = { 1.00, 0.81, 0.40 },
+    faint = { 0.53, 0.53, 0.56 },
+    bright = { 1.00, 0.95, 0.85 },
+    -- Progress bar tracks and recessed panels.
+    track = { 0.08, 0.09, 0.12, 1 },
+    trackGold = { 0.14, 0.12, 0.08, 1 },
+    well = { 0.04, 0.045, 0.06, 1 },
+    button = { 0.12, 0.12, 0.145, 1 },
+    buttonPressed = { 0.14, 0.11, 0.07, 1 },
+    buttonHover = { 0.96, 0.80, 0.42, 0.12 },
+    buttonDisabled = { 0.07, 0.07, 0.08, 0.9 },
+    edgeDisabled = { 0.30, 0.30, 0.32, 0.8 },
 }
+
+-- "|cffrrggbb" for a palette color, for text built with inline color codes.
+function WBF.UI.Hex(color)
+    return string.format(
+        "|cff%02x%02x%02x",
+        math.floor(color[1] * 255 + 0.5),
+        math.floor(color[2] * 255 + 0.5),
+        math.floor(color[3] * 255 + 0.5)
+    )
+end
+
+function WBF.UI.ColorText(color, text)
+    return WBF.UI.Hex(color) .. tostring(text) .. "|r"
+end
 
 local pools = {}
 
@@ -111,6 +140,175 @@ function WBF.UI.Paint(frame, background, border, edgeSize)
     frame:SetBackdropBorderColor(edge[1], edge[2], edge[3], edge[4] or 1)
 end
 
+local WHITE = "Interface\\Buttons\\WHITE8x8"
+
+local function ButtonFont(name, color)
+    local font = _G[name]
+    if not font then
+        font = CreateFont(name)
+        font:SetFontObject(GameFontHighlight)
+        font:SetTextColor(color[1], color[2], color[3], color[4] or 1)
+    end
+    return font
+end
+
+local function StateFill(button, setter, getter, color)
+    button[setter](button, WHITE)
+    local texture = button[getter](button)
+    texture:ClearAllPoints()
+    texture:SetAllPoints()
+    texture:SetVertexColor(color[1], color[2], color[3], color[4] or 1)
+    return texture
+end
+
+-- One physical pixel in UI units. A plain 1-unit edge rounds to zero pixels
+-- on some sides at fractional UI scales, which made borders vanish.
+local function OnePixel(region)
+    if PixelUtil and PixelUtil.GetNearestPixelSize and region.GetEffectiveScale then
+        return PixelUtil.GetNearestPixelSize(1, region:GetEffectiveScale(), 1)
+    end
+    return 1
+end
+
+-- Four edge textures drawn above the fill, so no inset rounding can cover
+-- them. leftOverhang extends the box past the frame's left edge.
+local function PixelBorder(frame, layer, leftOverhang)
+    local px = OnePixel(frame)
+    local left = -(leftOverhang or 0)
+    local top = frame:CreateTexture(nil, layer)
+    top:SetPoint("TOPLEFT", left, 0)
+    top:SetPoint("TOPRIGHT", 0, 0)
+    top:SetHeight(px)
+    local bottom = frame:CreateTexture(nil, layer)
+    bottom:SetPoint("BOTTOMLEFT", left, 0)
+    bottom:SetPoint("BOTTOMRIGHT", 0, 0)
+    bottom:SetHeight(px)
+    local leftEdge = frame:CreateTexture(nil, layer)
+    leftEdge:SetPoint("TOPLEFT", left, 0)
+    leftEdge:SetPoint("BOTTOMLEFT", left, 0)
+    leftEdge:SetWidth(px)
+    local rightEdge = frame:CreateTexture(nil, layer)
+    rightEdge:SetPoint("TOPRIGHT", 0, 0)
+    rightEdge:SetPoint("BOTTOMRIGHT", 0, 0)
+    rightEdge:SetWidth(px)
+    return { top, bottom, leftEdge, rightEdge }
+end
+
+local function PaintBorder(edges, color)
+    for index = 1, #edges do
+        edges[index]:SetColorTexture(color[1], color[2], color[3], color[4] or 1)
+    end
+end
+
+local function PaintButtonEdge(button)
+    PaintBorder(button.Border, button:IsEnabled() and WBF.UI.Colors.goldDim or WBF.UI.Colors.edgeDisabled)
+end
+
+-- Themed replacement for UIPanelButtonTemplate. The button's own state
+-- textures and font objects carry hover, pressed and disabled, so callers can
+-- still SetScript OnEnter/OnLeave for tooltips without losing the styling.
+function WBF.UI.Button(parent, text, width, height)
+    local colors = WBF.UI.Colors
+    local button = CreateFrame("Button", nil, parent)
+    button:SetSize(width or 100, height or 22)
+    -- The state fills draw in ARTWORK; the border sits above them.
+    button.Border = PixelBorder(button, "OVERLAY")
+    StateFill(button, "SetNormalTexture", "GetNormalTexture", colors.button)
+    StateFill(button, "SetPushedTexture", "GetPushedTexture", colors.buttonPressed)
+    StateFill(button, "SetDisabledTexture", "GetDisabledTexture", colors.buttonDisabled)
+    StateFill(button, "SetHighlightTexture", "GetHighlightTexture", colors.buttonHover):SetBlendMode("ADD")
+    local label = button:CreateFontString(nil, "OVERLAY")
+    label:SetPoint("CENTER", 0, 0)
+    button:SetFontString(label)
+    button:SetNormalFontObject(ButtonFont("WarbandFYIButtonFont", colors.cream))
+    button:SetHighlightFontObject(ButtonFont("WarbandFYIButtonFontHover", colors.gold))
+    button:SetDisabledFontObject(ButtonFont("WarbandFYIButtonFontOff", colors.faint))
+    button:SetPushedTextOffset(1, -1)
+    button:HookScript("OnEnable", PaintButtonEdge)
+    button:HookScript("OnDisable", PaintButtonEdge)
+    PaintButtonEdge(button)
+    if text then
+        button:SetText(text)
+    end
+    return button
+end
+
+-- Themed replacement for InputBoxTemplate. The frame sits 5px left of the
+-- drawn box like the stock template, so existing anchors line up unchanged.
+function WBF.UI.EditBox(parent, width, height)
+    local colors = WBF.UI.Colors
+    local edit = CreateFrame("EditBox", nil, parent)
+    edit:SetSize(width or 120, height or 22)
+    edit:SetAutoFocus(false)
+    edit:SetFontObject(ChatFontNormal)
+    edit:SetTextInsets(0, 4, 0, 0)
+    local fill = edit:CreateTexture(nil, "BACKGROUND")
+    fill:SetPoint("TOPLEFT", -5, 0)
+    fill:SetPoint("BOTTOMRIGHT", 0, 0)
+    fill:SetColorTexture(colors.well[1], colors.well[2], colors.well[3], colors.well[4] or 1)
+    edit.Fill = fill
+    edit.Border = PixelBorder(edit, "BORDER", 5)
+    PaintBorder(edit.Border, colors.goldDim)
+    edit:SetScript("OnEscapePressed", function(self)
+        self:ClearFocus()
+    end)
+    edit:SetScript("OnEditFocusGained", function(self)
+        self:HighlightText()
+    end)
+    edit:SetScript("OnEditFocusLost", function(self)
+        self:HighlightText(0, 0)
+    end)
+    return edit
+end
+
+-- Thin gold scrollbar for a ScrollFrame. Keep it in step with
+-- WBF.UI.SyncScrollBar whenever the scroll range or offset changes.
+function WBF.UI.ScrollBar(scroll, parent, thumbHeight)
+    local colors = WBF.UI.Colors
+    local bar = CreateFrame("Slider", nil, parent or scroll)
+    bar:SetOrientation("VERTICAL")
+    bar:SetWidth(8)
+    bar:SetValueStep(1)
+    if bar.SetObeyStepOnDrag then
+        bar:SetObeyStepOnDrag(true)
+    end
+    bar:SetMinMaxValues(0, 1)
+    local track = bar:CreateTexture(nil, "BACKGROUND")
+    track:SetPoint("TOP", 0, 0)
+    track:SetPoint("BOTTOM", 0, 0)
+    track:SetWidth(2)
+    track:SetColorTexture(colors.line[1], colors.line[2], colors.line[3], 0.45)
+    bar.Track = track
+    local thumb = bar:CreateTexture(nil, "OVERLAY")
+    thumb:SetColorTexture(colors.gold[1], colors.gold[2], colors.gold[3], 0.85)
+    thumb:SetSize(8, thumbHeight or 36)
+    bar:SetThumbTexture(thumb)
+    bar.Thumb = thumb
+    bar:SetScript("OnValueChanged", function(self, value)
+        if self.updating then
+            return
+        end
+        scroll:SetVerticalScroll(value)
+    end)
+    bar:Hide()
+    return bar
+end
+
+function WBF.UI.SyncScrollBar(scroll, bar)
+    local range = scroll:GetVerticalScrollRange()
+    if range <= 1 then
+        bar:Hide()
+        scroll:SetVerticalScroll(0)
+        return
+    end
+    bar:Show()
+    bar.updating = true
+    bar:SetMinMaxValues(0, range)
+    local value = math.min(scroll:GetVerticalScroll(), range)
+    bar:SetValue(value)
+    bar.updating = false
+end
+
 function WBF.UI.SetAtlasChain(texture, atlases, fallback)
     if atlases and C_Texture and C_Texture.GetAtlasInfo then
         for index = 1, #atlases do
@@ -145,7 +343,7 @@ local CRITERIA_CHECK = "|TInterface\\AchievementFrame\\UI-Achievement-Criteria-C
 local function CriteriaRow(line)
     local done = line.done == true or line.mark == "✓"
     if done then
-        return CRITERIA_CHECK .. "  |cff59f27a" .. line.text .. "|r"
+        return CRITERIA_CHECK .. "  " .. WBF.UI.ColorText(WBF.UI.Colors.green, line.text)
     end
     return "-  " .. line.text
 end

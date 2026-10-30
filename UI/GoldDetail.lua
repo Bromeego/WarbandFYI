@@ -314,11 +314,9 @@ function WBF.UI.GoldDetail.Attach(parent)
         if WBF.UI.frame then WBF.UI.frame:BackDetail() end
     end)
 
-    allTimeButton = CreateFrame("Button", nil, board, "UIPanelButtonTemplate")
-    allTimeButton:SetSize(98, 22)
+    allTimeButton = WBF.UI.Button(board, "View All Time", 98, 22)
     allTimeButton:SetPoint("TOPRIGHT", board, "TOPRIGHT", 0, -30)
     allTimeLabel = allTimeButton:GetFontString()
-    allTimeButton:SetText("View All Time")
     allTimeButton:SetScript("OnClick", function()
         if not board.LastModel or not WBF.UI.frame then return end
         WBF.UI.frame:OpenDetail("goldTrend", {

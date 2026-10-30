@@ -116,9 +116,7 @@ local function HoldKeys(edit)
 end
 
 local function Box(parent, width)
-    local edit = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
-    edit:SetAutoFocus(false)
-    edit:SetSize(width, 22)
+    local edit = WBF.UI.EditBox(parent, width, 22)
     edit:SetFontObject(GameFontHighlightSmall)
     edit:SetTextColor(WBF.UI.Colors.cream[1], WBF.UI.Colors.cream[2], WBF.UI.Colors.cream[3])
     WBF.UI.BindWheel(edit)
@@ -1249,7 +1247,7 @@ function WBF.UI.NotebookAdd.Attach()
     Color(previewProgress, WBF.UI.Colors.cream)
     previewBar = dialog:CreateTexture(nil, "BACKGROUND")
     previewBar:SetHeight(6)
-    previewBar:SetColorTexture(0.08, 0.09, 0.12, 1)
+    previewBar:SetColorTexture(WBF.UI.Colors.track[1], WBF.UI.Colors.track[2], WBF.UI.Colors.track[3], WBF.UI.Colors.track[4])
     previewFill = dialog:CreateTexture(nil, "ARTWORK")
     previewFill:SetHeight(6)
     previewFill:SetColorTexture(WBF.UI.Colors.gold[1], WBF.UI.Colors.gold[2], WBF.UI.Colors.gold[3], 1)
@@ -1293,18 +1291,35 @@ function WBF.UI.NotebookAdd.Attach()
         WBF.UI.NotebookAdd.Close()
     end)
 
-    if hooksecurefunc and type(ChatEdit_InsertLink) == "function" then
-        hooksecurefunc("ChatEdit_InsertLink", function(link)
-            if not dialog:IsShown() or not state or state.screen ~= "item" or type(link) ~= "string" then
-                return
-            end
-            local itemID = WBF.NotebookSmart and WBF.NotebookSmart.ItemID and WBF.NotebookSmart.ItemID(link) or nil
-            if not itemID then
-                return
-            end
-            pasteBox:SetText(link)
-            pasteBox:SetCursorPosition(#link)
-            pasteBox:SetFocus()
-        end)
+    local function TakeItemLink(link)
+        if not dialog:IsShown() or not state or state.screen ~= "item" or type(link) ~= "string" then
+            return
+        end
+        local itemID = WBF.NotebookSmart and WBF.NotebookSmart.ItemID and WBF.NotebookSmart.ItemID(link) or nil
+        if not itemID then
+            return
+        end
+        pasteBox:SetText(link)
+        pasteBox:SetCursorPosition(#link)
+        pasteBox:SetFocus()
+    end
+    -- Bag Shift-clicks go through HandleModifiedItemClick and do not reach
+    -- ChatEdit_InsertLink while chat is closed. Newer clients route chat
+    -- links through ChatFrameUtil.InsertLink. Hook every path that exists.
+    if hooksecurefunc then
+        if type(HandleModifiedItemClick) == "function" then
+            hooksecurefunc("HandleModifiedItemClick", function(link)
+                if IsModifiedClick and not IsModifiedClick("CHATLINK") then
+                    return
+                end
+                TakeItemLink(link)
+            end)
+        end
+        if ChatFrameUtil and type(ChatFrameUtil.InsertLink) == "function" then
+            hooksecurefunc(ChatFrameUtil, "InsertLink", TakeItemLink)
+        end
+        if type(ChatEdit_InsertLink) == "function" then
+            hooksecurefunc("ChatEdit_InsertLink", TakeItemLink)
+        end
     end
 end

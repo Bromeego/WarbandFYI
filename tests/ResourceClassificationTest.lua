@@ -161,6 +161,35 @@ check("a similar bookkeeping name with tracker flags is system", classOf(424248,
     maxWeeklyQuantity = 4,
 }) == SYSTEM)
 
+local storageFields = {
+    discovered = false,
+    isShowInBackpack = false,
+    isTypeUnused = false,
+    description = "",
+}
+local function storage(name)
+    local info = { name = name }
+    for key, value in pairs(storageFields) do
+        info[key] = value
+    end
+    return info
+end
+
+check("a race quest ID store is system", classOf(424250,
+    storage("Dragon Racing - Temp Storage - Race Quest ID")) == SYSTEM)
+check("a race time scoreboard is system", classOf(424251,
+    storage("Dragon Racing - Scoreboard - Race Complete Time MS")) == SYSTEM)
+check("a housing route record is system", classOf(424252,
+    storage("Housing - Going Postal - Personal Best Record - Alliance - Rt2")) == SYSTEM)
+check("an uninspected storage name stays unknown", classOf(424253, {
+    name = "Dragon Racing - Scoreboard - Race Complete Time MS",
+}) == UNKNOWN)
+check("a storage word leading the name is not a role", classOf(424254, {
+    name = "Scoreboard - Tokens",
+    discovered = true,
+    description = "Spend this.",
+}) == PLAYER)
+
 check("bookkeeping name shown in the backpack is kept", classOf(424249, {
     name = "12.0 Delves - System - Seasonal Affix - Events Active",
     discovered = true,

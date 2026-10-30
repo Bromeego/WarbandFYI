@@ -151,18 +151,7 @@ local function UpdateScroll()
     if not scroll or not bar then
         return
     end
-    local range = scroll:GetVerticalScrollRange()
-    if range <= 1 then
-        bar:Hide()
-        scroll:SetVerticalScroll(0)
-        return
-    end
-    bar:Show()
-    bar.updating = true
-    bar:SetMinMaxValues(0, range)
-    local value = math.min(scroll:GetVerticalScroll(), range)
-    bar:SetValue(value)
-    bar.updating = false
+    WBF.UI.SyncScrollBar(scroll, bar)
 end
 
 local function Wrapped(text, width)
@@ -239,13 +228,11 @@ local function BlockPool()
         icon:SetSize(22, 22)
         local barBg = card:CreateTexture(nil, "BACKGROUND")
         barBg:SetHeight(5)
-        barBg:SetColorTexture(0.08, 0.09, 0.12, 1)
+        barBg:SetColorTexture(WBF.UI.Colors.track[1], WBF.UI.Colors.track[2], WBF.UI.Colors.track[3], WBF.UI.Colors.track[4])
         local fill = card:CreateTexture(nil, "ARTWORK")
         fill:SetHeight(5)
         fill:SetColorTexture(WBF.UI.Colors.gold[1], WBF.UI.Colors.gold[2], WBF.UI.Colors.gold[3], 1)
-        local link = CreateFrame("EditBox", nil, card, "InputBoxTemplate")
-        link:SetAutoFocus(false)
-        link:SetHeight(18)
+        local link = WBF.UI.EditBox(card, nil, 18)
         link:SetFontObject(GameFontHighlightSmall)
         link:SetScript("OnEscapePressed", function(self)
             self:ClearFocus()
@@ -293,7 +280,7 @@ local function CheckPool()
         local fill = box:CreateTexture(nil, "BORDER")
         fill:SetPoint("TOPLEFT", 1, -1)
         fill:SetPoint("BOTTOMRIGHT", -1, 1)
-        fill:SetColorTexture(0.04, 0.045, 0.06, 1)
+        fill:SetColorTexture(WBF.UI.Colors.well[1], WBF.UI.Colors.well[2], WBF.UI.Colors.well[3], WBF.UI.Colors.well[4])
         local mark = box:CreateTexture(nil, "ARTWORK")
         mark:SetPoint("TOPLEFT", 3, -3)
         mark:SetPoint("BOTTOMRIGHT", -3, 3)
@@ -888,27 +875,9 @@ function WBF.UI.Sheet.Ensure()
     Color(noticeText, WBF.UI.Colors.muted)
     noticeText:Hide()
 
-    bar = CreateFrame("Slider", nil, scroll)
-    bar:SetOrientation("VERTICAL")
-    bar:SetWidth(8)
+    bar = WBF.UI.ScrollBar(scroll, nil, 28)
     bar:SetPoint("TOPRIGHT", scroll, "TOPRIGHT", 10, -2)
     bar:SetPoint("BOTTOMRIGHT", scroll, "BOTTOMRIGHT", 10, 2)
-    bar:SetValueStep(1)
-    if bar.SetObeyStepOnDrag then
-        bar:SetObeyStepOnDrag(true)
-    end
-    bar:SetMinMaxValues(0, 1)
-    local thumb = bar:CreateTexture(nil, "OVERLAY")
-    thumb:SetColorTexture(WBF.UI.Colors.gold[1], WBF.UI.Colors.gold[2], WBF.UI.Colors.gold[3], 0.85)
-    thumb:SetSize(8, 28)
-    bar:SetThumbTexture(thumb)
-    bar:Hide()
-    bar:SetScript("OnValueChanged", function(self, value)
-        if self.updating then
-            return
-        end
-        scroll:SetVerticalScroll(value)
-    end)
     scroll:SetScript("OnScrollRangeChanged", UpdateScroll)
     scroll:SetScript("OnVerticalScroll", UpdateScroll)
 
