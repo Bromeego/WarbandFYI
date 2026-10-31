@@ -81,6 +81,12 @@ local function Store()
     if type(data.hidden) ~= "table" then data.hidden = {} end
     if type(data.completed) ~= "table" then data.completed = {} end
     if type(data.daily) ~= "table" then data.daily = {} end
+    if type(data.sources) ~= "table" then data.sources = {} end
+    for key, entry in pairs(data.sources) do
+        if type(key) == "string" and type(entry) == "table" and type(entry.instance) == "string" and type(entry.boss) == "string" then
+            Hunts.RegisterSource(key, entry)
+        end
+    end
     for key, target in pairs(data.custom) do
         if type(target) == "table" then
             -- Migrate older custom item hunts for explicitly known mount drops.
@@ -269,8 +275,10 @@ function Hunts.SourceFromText(text)
     local best, bestScore, tied = nil, 0, false
     for _, key in ipairs(sourceKeys) do
         local source = sourceRegistry[key]
-        if values[NormalizeName(source.boss)] then
-            local score = values[NormalizeName(source.instance)] and 2 or 1
+        local placed = values[NormalizeName(source.instance)]
+        -- A source found in the Encounter Journal needs its raid named too.
+        if values[NormalizeName(source.boss)] and (placed or not source.fromJournal) then
+            local score = placed and 2 or 1
             if score > bestScore then
                 best, bestScore, tied = key, score, false
             elseif score == bestScore then
@@ -282,12 +290,89 @@ function Hunts.SourceFromText(text)
     return best, lines
 end
 
--- Curated source for a target, read from the Journal's source text.
--- Returns the source key (or nil) and the Journal's source lines.
+-- Adds a source to the registry for this session. Curated entries are never
+-- replaced.
+function Hunts.RegisterSource(key, entry)
+    if sourceRegistry[key] then return key end
+    sourceRegistry[key] = entry
+    sourceKeys[#sourceKeys + 1] = key
+    return key
+end
+
+local function Call(fn, ...)
+    if type(fn) ~= "function" then return nil end
+    return WBF.Format.SafeCall(fn, ...)
+end
+
+-- Looks a boss up in the Encounter Journal inside the named raid or
+-- dungeon. Both names must match a real journal instance and encounter, so a
+-- source is never invented from loose text. The journal's selected tier is
+-- restored afterwards.
+function Hunts.FindEncounter(bossName, instanceName)
+    if not (EJ_GetNumTiers and EJ_SelectTier and EJ_GetInstanceByIndex and EJ_GetEncounterInfoByIndex) then return nil end
+    local wantedBoss, wantedInstance = NormalizeName(bossName), NormalizeName(instanceName)
+    if wantedBoss == "" or wantedInstance == "" then return nil end
+    local tiers = WBF.Format.AsNumber(Call(EJ_GetNumTiers)) or 0
+    local previous = WBF.Format.AsNumber(Call(EJ_GetCurrentTier))
+    local found
+    for tier = tiers, 1, -1 do
+        Call(EJ_SelectTier, tier)
+        for _, isRaid in ipairs({ true, false }) do
+            for index = 1, 200 do
+                local instanceID, name = Call(EJ_GetInstanceByIndex, index, isRaid)
+                if not instanceID then break end
+                if NormalizeName(name) == wantedInstance then
+                    for encounterIndex = 1, 40 do
+                        local encounterName, _, encounterID = Call(EJ_GetEncounterInfoByIndex, encounterIndex, instanceID)
+                        if not encounterName then break end
+                        if NormalizeName(encounterName) == wantedBoss then
+                            found = { instance = name, boss = encounterName, journalInstanceID = instanceID,
+                                journalEncounterID = encounterID, isRaid = isRaid }
+                            break
+                        end
+                    end
+                end
+                if found then break end
+            end
+            if found then break end
+        end
+        if found then break end
+    end
+    if previous then Call(EJ_SelectTier, previous) end
+    return found
+end
+
+-- A source for Journal source lines that the Encounter Journal confirms: one
+-- line names a boss and another names the raid or dungeon it is in.
+local function EncounterFromLines(lines)
+    for _, bossLine in ipairs(lines) do
+        for _, placeLine in ipairs(lines) do
+            if placeLine ~= bossLine then
+                local found = Hunts.FindEncounter(bossLine.value, placeLine.value)
+                if found then return found end
+            end
+        end
+    end
+end
+
+-- Source for a target, read from the Journal's source text. A curated source
+-- wins (it carries special rules such as a required difficulty); otherwise
+-- an Encounter Journal match becomes a source of its own. Returns the source
+-- key (or nil) and the Journal's source lines.
 function Hunts.JournalSource(kind, id)
     local text = JournalSourceText(kind, id)
     if not text then return nil, {} end
-    return Hunts.SourceFromText(text)
+    local key, lines = Hunts.SourceFromText(text)
+    if key then return key, lines end
+    local found = EncounterFromLines(lines)
+    if not found then return nil, lines end
+    key = "ej" .. tostring(found.journalEncounterID or (NormalizeName(found.instance) .. NormalizeName(found.boss)))
+    Hunts.RegisterSource(key, {
+        instance = found.instance, boss = found.boss, isRaid = found.isRaid,
+        journalInstanceID = found.journalInstanceID, journalEncounterID = found.journalEncounterID,
+        fromJournal = true, note = "From the Encounter Journal; difficulty not verified",
+    })
+    return key, lines
 end
 
 -- What a typed or Shift-clicked target is: "mount", "pet", "achievement" or
@@ -298,9 +383,10 @@ Hunts.TargetKind = ParseTarget
 function Hunts.AddTarget(link, sourceKey)
     local kind, id = ParseTarget(link)
     local source = sourceRegistry[sourceKey]
-    if not id then return nil, "Search for a mount and pick it from the list, enter an item ID, or Shift-click an item or pet (use Selected Achievement for achievements)." end
+    if not id then return nil, "Search for a mount and pick it from the list, enter an item ID, or Shift-click an item or pet (or use Use Current Selection)." end
     if not source then return nil, "Choose a supported source." end
     local data = Store()
+    if source.fromJournal then data.sources[sourceKey] = source end
     local key = kind .. id .. "_" .. sourceKey
     if not catalog[key] then
         local title
@@ -455,6 +541,8 @@ function Hunts.Eligibility(key, guid)
     local source = target.sourceKey and sourceRegistry[target.sourceKey]
     if source and source.daily then return "eligible" end
     local class = character.classFile
+    -- Battle pet drops have no class or armour restriction.
+    if setting.goal == "pet" and target.petSpeciesID then return "eligible" end
     if setting.goal == "mount" then
         if target.mountSpellID then return "eligible" end
         return "unknown"
