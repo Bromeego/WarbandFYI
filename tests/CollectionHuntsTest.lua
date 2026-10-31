@@ -119,7 +119,11 @@ local hallowsEnd = true
 function GetLFGDungeonRewards(id)
     return id == 285 and doneToday or false
 end
-C_DateAndTime = { GetSecondsUntilDailyReset = function() return 3600 end }
+local weeklyLeft = 2 * 86400
+C_DateAndTime = {
+    GetSecondsUntilDailyReset = function() return 3600 end,
+    GetSecondsUntilWeeklyReset = function() return weeklyLeft end,
+}
 C_PetJournal = {
     GetPetInfoByItemID = function(itemID)
         if itemID == 70000 then return "Arfus", 1, 2, nil, nil, nil, nil, nil, nil, nil, nil, nil, 4321 end
@@ -151,7 +155,7 @@ doneToday = true
 WBF.CollectionHunts.SyncDaily()
 check("a looted daily bag is done today", WBF.CollectionHunts.Status(arfus, "A") == "done")
 now = now + 3601
-check("the daily reset clears done to unverified", WBF.CollectionHunts.Status(arfus, "A") == "unknown")
+check("after the daily reset the bag is available again", WBF.CollectionHunts.Status(arfus, "A") == "available")
 doneToday = false
 WBF.CollectionHunts.SyncDaily()
 hallowsEnd = false
@@ -160,6 +164,51 @@ hallowsEnd = true
 petsOwned = 1
 check("owning the pet completes the hunt", WBF.CollectionHunts.Status(arfus, "A") == "collected")
 petsOwned = 0
+
+-- Lockouts are trusted until the weekly reset, for every character.
+reset()
+local drake = WBF.CollectionHunts.AddTarget("63041", "southwind")
+local DAY = 86400
+-- The current week started 5 days ago (2 days left of 7).
+local function snapshot(guid, checkedAt, saves)
+    db.collectionHunts.lockouts[guid] = {
+        throneofthefourwinds = { checkedAt = checkedAt, verified = true, bosses = {}, saves = saves or {} },
+    }
+end
+local function killed(expiresAt)
+    return { { difficultyID = 4, expiresAt = expiresAt, bosses = { alakir = true } } }
+end
+snapshot("A", now - 3 * DAY)
+check("an alt seen this week with no lockout is available", WBF.CollectionHunts.Status(drake, "A") == "available")
+snapshot("A", now - 3 * DAY, killed(now + 2 * DAY))
+check("an alt that killed the boss this week is done", WBF.CollectionHunts.Status(drake, "A") == "done")
+snapshot("A", now - 10 * DAY, killed(now - 3 * DAY))
+check("an alt last seen before the reset is available again", WBF.CollectionHunts.Status(drake, "A") == "available")
+local savedWeekly = C_DateAndTime.GetSecondsUntilWeeklyReset
+C_DateAndTime.GetSecondsUntilWeeklyReset = nil
+snapshot("A", now - 3 * DAY)
+check("without the weekly reset time an old snapshot stays unverified", WBF.CollectionHunts.Status(drake, "A") == "unknown")
+C_DateAndTime.GetSecondsUntilWeeklyReset = savedWeekly
+
+-- The login FYI lists every character that can make an attempt.
+local roster = {
+    { guid = "A", name = "Mira", realm = "Area 52" },
+    { guid = "B", name = "Taxableyawl", realm = "Area 52" },
+    { guid = "C", name = "Doneyet", realm = "Area 52" },
+}
+local listBefore = WBF.Characters.List
+WBF.Characters.List = function() return roster end
+GetNumSavedInstances = function() return 0 end
+GetSavedInstanceInfo = function() end
+WBF.CollectionHunts.Sync()
+snapshot("B", now - 4 * DAY)
+snapshot("C", now - 1 * DAY - 60, killed(now + 2 * DAY))
+local entry = WBF.CollectionHunts.LoginEntry()
+local line = entry and entry.lines[1]
+check("the hunt FYI lists the drake", line and line.text == WBF.CollectionHunts.Catalog()[drake].title, line and line.text)
+check("the hunt FYI names this character first, then alts that can go",
+    line and line.detail == "Throne of the Four Winds - Al'Akir: Mira (you), Taxableyawl", line and line.detail)
+WBF.Characters.List = listBefore
 
 -- Journal source text picks a curated source.
 local Hunts = WBF.CollectionHunts
