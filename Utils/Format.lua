@@ -39,6 +39,50 @@ function WBF.Format.PlainString(value)
     return value
 end
 
+-- Blizzard tags internal scaffolding (quests, currencies) with authoring
+-- markers such as [DNT] (do not translate), <NYI> or [PH]. A name carrying
+-- one is never meant for players.
+local TITLE_TOKENS = {
+    "<DNT>", "[DNT]", "(DNT)", "{DNT}",
+    "<NYI>", "[NYI]", "(NYI)", "{NYI}",
+    "<PH>", "[PH]", "(PH)", "{PH}",
+    "<UNUSED>", "[UNUSED]", "(UNUSED)",
+    "<DEPRECATED>", "[DEPRECATED]", "(DEPRECATED)",
+    "<INTERNAL>", "[INTERNAL]", "(INTERNAL)",
+}
+
+local TITLE_PREFIXES = {
+    "^DNT[%s:%-]",
+    "^NYI[%s:%-]",
+    "^PH[%s:%-]",
+    "^UNUSED[%s:%-]",
+    "^DEPRECATED[%s:%-]",
+    "^INTERNAL[%s:%-]",
+    "^DO NOT TRANSLATE$",
+    "^DO NOT TRANSLATE[%s]*[-:]",
+    "^DO NOT USE$",
+    "^DO NOT USE[%s]*[-:]",
+}
+
+function WBF.Format.HasInternalMarker(text)
+    text = WBF.Format.PlainString(text)
+    if not text then
+        return false
+    end
+    local upper = text:upper()
+    for index = 1, #TITLE_TOKENS do
+        if upper:find(TITLE_TOKENS[index], 1, true) then
+            return true
+        end
+    end
+    for index = 1, #TITLE_PREFIXES do
+        if upper:match(TITLE_PREFIXES[index]) then
+            return true
+        end
+    end
+    return false
+end
+
 -- Nil means the boolean could not be read. Callers should treat that as unknown.
 function WBF.Format.AsBoolean(value)
     if WBF.Format.IsSecret(value) or value == nil then

@@ -25,28 +25,6 @@ local SYSTEM_TAG_IDS = {
     [291] = true, -- Hidden NYI
 }
 
-local TITLE_TOKENS = {
-    "<DNT>", "[DNT]", "(DNT)", "{DNT}",
-    "<NYI>", "[NYI]", "(NYI)", "{NYI}",
-    "<PH>", "[PH]", "(PH)", "{PH}",
-    "<UNUSED>", "[UNUSED]", "(UNUSED)",
-    "<DEPRECATED>", "[DEPRECATED]", "(DEPRECATED)",
-    "<INTERNAL>", "[INTERNAL]", "(INTERNAL)",
-}
-
-local TITLE_PREFIXES = {
-    "^DNT[%s:%-]",
-    "^NYI[%s:%-]",
-    "^PH[%s:%-]",
-    "^UNUSED[%s:%-]",
-    "^DEPRECATED[%s:%-]",
-    "^INTERNAL[%s:%-]",
-    "^DO NOT TRANSLATE$",
-    "^DO NOT TRANSLATE[%s]*[-:]",
-    "^DO NOT USE$",
-    "^DO NOT USE[%s]*[-:]",
-}
-
 local function AbsorbEnumTags()
     local tags = Enum and Enum.QuestTag
     if type(tags) ~= "table" then
@@ -68,24 +46,7 @@ local function Remember(questID, reason)
 end
 
 local function HasInternalTitle(title)
-    if type(title) ~= "string" or title == "" then
-        return false
-    end
-    if issecretvalue and issecretvalue(title) then
-        return false
-    end
-    local upper = title:upper()
-    for index = 1, #TITLE_TOKENS do
-        if upper:find(TITLE_TOKENS[index], 1, true) then
-            return true
-        end
-    end
-    for index = 1, #TITLE_PREFIXES do
-        if upper:match(TITLE_PREFIXES[index]) then
-            return true
-        end
-    end
-    return false
+    return WBF.Format.HasInternalMarker(title)
 end
 
 local function IsSystemTag(tagID)
