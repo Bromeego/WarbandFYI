@@ -507,20 +507,33 @@ end
 
 -- A daily boss reads "done" until the next daily reset. An unseen character,
 -- or one last seen before the reset, stays unverified rather than available.
+-- Start of the current weekly reset period, or nil when the client cannot say.
+local WEEK = 7 * 86400
+local function LastWeeklyReset(now)
+    if not (C_DateAndTime and C_DateAndTime.GetSecondsUntilWeeklyReset) then return nil end
+    local left = WBF.Format.AsNumber(WBF.Format.SafeCall(C_DateAndTime.GetSecondsUntilWeeklyReset))
+    if not left or left <= 0 or left > WEEK then return nil end
+    return now + left - WEEK
+end
+
+-- A character's record stays true until the reset it was taken in has passed:
+-- the bag can only be looted by playing that character, which records it.
+-- Once that reset has passed, today's bag is waiting again.
 local function DailyStatus(data, sourceKey, source, guid)
     local running = EventRunning(source.eventKey)
     if running == false then return "closed" end
     local seen = data.daily[guid] and data.daily[guid][sourceKey]
     if type(seen) ~= "table" or type(seen.checkedAt) ~= "number" then return "unknown" end
     local now = time()
-    if now < seen.checkedAt or (seen.expiresAt and seen.expiresAt <= now) then return "unknown" end
-    if seen.done then return "done" end
+    if now < seen.checkedAt then return "unknown" end
     if running == nil then return "unknown" end
+    if seen.expiresAt and seen.expiresAt <= now then return "available" end
+    if seen.done then return "done" end
     return "available"
 end
 
--- Only a fresh, successfully completed saved-instance scan can prove an
--- available attempt. A scan of an alt never refreshes its snapshot.
+-- Only a successfully completed saved-instance scan can prove an available
+-- attempt. Each character's scan is kept and trusted until the weekly reset.
 function Hunts.Status(key, guid)
     local data = Store()
     local target = catalog[key]
@@ -537,10 +550,19 @@ function Hunts.Status(key, guid)
     local raid = char and char[Norm(target.instance)]
     if not raid or not raid.checkedAt or not raid.verified then return "unknown" end
     local now = time()
-    -- Snapshot freshness is deliberately conservative for characters not
-    -- presently logged in, including snapshots with no lockout information.
-    if now - raid.checkedAt > 86400 or now < raid.checkedAt then return "unknown" end
-    if raid.expiresAt and raid.expiresAt <= now then return "unknown" end
+    if now < raid.checkedAt then return "unknown" end
+    -- A raid lockout only changes when that character plays, and playing
+    -- rescans it, so a snapshot holds until the weekly reset. A snapshot from
+    -- before the latest reset recorded lockouts that have all expired since.
+    if now - raid.checkedAt > 86400 then
+        local lastReset = LastWeeklyReset(now)
+        if not lastReset then return "unknown" end
+        if raid.checkedAt < lastReset then
+            if type(raid.saves) ~= "table" then return "unknown" end
+            return "available"
+        end
+    end
+    if type(raid.saves) ~= "table" and raid.expiresAt and raid.expiresAt <= now then return "unknown" end
 
     local source, sourceKey = SourceForHunt(key, target)
     local needed = sourceKey and REQUIRED_DIFFICULTY[sourceKey]
@@ -732,21 +754,39 @@ end
 
 -- Build a read-only, consolidated FYI. Only verified, eligible, currently
 -- available attempts are advertised; unknowns stay on the Hunts dashboard.
+-- Characters that can make an attempt at a hunt now, this character first.
+function Hunts.AvailableCharacters(key)
+    local current = WBF.Characters and WBF.Characters.GetGuid and WBF.Characters.GetGuid()
+    local names = {}
+    local list = WBF.Characters and WBF.Characters.List and WBF.Characters.List() or {}
+    for _, character in ipairs(list) do
+        if character.guid and Hunts.Status(key, character.guid) == "available" then
+            local entry = { guid = character.guid, name = character.name or "?", current = character.guid == current }
+            if entry.current then table.insert(names, 1, entry) else names[#names + 1] = entry end
+        end
+    end
+    return names
+end
+
+-- One FYI line per active hunt with every character that can attempt it now.
 function Hunts.LoginEntry()
     if not scanReady then return nil end
-    local guid = WBF.Characters and WBF.Characters.GetGuid and WBF.Characters.GetGuid()
-    if not guid then return nil end
     local lines = {}
     for _, hunt in ipairs(Hunts.Active()) do
-        if Hunts.Status(hunt.key, guid) == "available" then
+        local ready = Hunts.AvailableCharacters(hunt.key)
+        if #ready > 0 then
             local source = hunt.info.sourceKey and sourceRegistry[hunt.info.sourceKey]
-            local detail = source and source.daily and (hunt.info.boss .. " - daily bag not looted today")
+            local where = source and source.daily and (hunt.info.boss .. " daily bag")
                 or (hunt.info.instance .. " - " .. hunt.info.boss)
-            lines[#lines + 1] = { text = hunt.info.title, detail = detail }
+            local names = {}
+            for index, entry in ipairs(ready) do
+                names[index] = entry.current and (entry.name .. " (you)") or entry.name
+            end
+            lines[#lines + 1] = { text = hunt.info.title, detail = where .. ": " .. table.concat(names, ", ") }
         end
     end
     if #lines == 0 then return nil end
-    return { title = "Available Collection Hunts", context = "Ready on this character",
+    return { title = "Available Collection Hunts", context = "Characters that can make an attempt",
         lines = lines, triggerType = "LOGIN" }
 end
 
