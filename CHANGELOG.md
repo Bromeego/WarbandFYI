@@ -71,6 +71,7 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 ### Changed
 
 - Notebook reads no longer re-check the whole notebook on every call. Listing 20 pages with 300 blocks went from about 1.6 seconds to under a millisecond in testing, so large notebooks stay responsive.
+- Dashboard currency tiles read the event log once per refresh instead of once per tracked resource, cutting a full-log week refresh from roughly 100–300 ms to under 30 ms in testing.
 
 - Balance History and Net Gold History draw a smooth, anti-aliased line with a soft glow and a gradient fill. Observation dots appear on hover; only the latest point stays marked.
 
