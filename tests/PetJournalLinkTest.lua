@@ -128,7 +128,26 @@ WBF.CollectionHunts = {
     Settings = function() return { selected = {} } end,
     Source = function() return {} end,
     Sources = function() return {} end,
-    FindMounts = function() return {} end,
+    TargetKind = function(text)
+        text = tostring(text or "")
+        local mount = tonumber(text:match("^%s*mount:(%d+)%s*$")); if mount then return "mount", mount end
+        local pet = tonumber(text:match("battlepet:(%d+)")); if pet then return "pet", pet end
+        local ach = tonumber(text:match("achievement:(%d+)")); if ach then return "achievement", ach end
+        local item = tonumber(text:match("item:(%d+)")) or tonumber(text:match("^%s*(%d+)%s*$")); if item then return "item", item end
+    end,
+    Preview = function() return nil end,
+    MountSourceKey = function() return nil end,
+    Mount = function() return nil end,
+    FindMounts = function(query)
+        local all = { { id = 363, name = "Invincible's Reins" }, { id = 364, name = "Invincible's Reins of Glory" } }
+        local found = {}
+        query = tostring(query or ""):lower()
+        if #query < 2 then return found end
+        for _, entry in ipairs(all) do
+            if entry.name:lower():find(query, 1, true) then found[#found + 1] = entry end
+        end
+        return found
+    end,
     KnownSource = function() return nil end,
 }
 WBF.Characters = { List = function() return {} end }
@@ -199,6 +218,38 @@ input.shown = false
 existingButton:Click()
 check("a hidden hunt box is left alone", input.text == "", input.text)
 input.shown = true
+
+-- One box for every kind of target --------------------------------------------
+
+local Page = WBF.UI.CollectionHunts
+local feedback = page.controls.Feedback
+
+input:SetText("")
+existingButton:Click()
+check("a Shift-clicked pet is named in the detection line", feedback.text == "Pet: Arfus", feedback.text)
+check("a pet link is added as the pet", speciesIn(Page.ResolvedTarget()) == 4321, Page.ResolvedTarget())
+check("a pet link shows no mount suggestions", #Page.MountMatches() == 0)
+
+input:SetText("invincible")
+check("typed text suggests mounts", #Page.MountMatches() == 2)
+check("partial text is not yet a target", Page.ResolvedTarget() == "invincible")
+
+input:SetText("Invincible's Reins")
+check("a mount's full name resolves to that mount", Page.ResolvedTarget() == "mount:363", Page.ResolvedTarget())
+
+input:SetText("inv")
+page.controls.MountResults[2].mount = { id = 364, name = "Invincible's Reins of Glory" }
+page.controls.MountResults[2]:Click()
+check("picking a suggestion shows the mount name", input.text == "Invincible's Reins of Glory", input.text)
+check("a picked mount is added by its ID", Page.ResolvedTarget() == "mount:364", Page.ResolvedTarget())
+check("a picked mount hides the suggestions", #Page.MountMatches() == 0)
+input:SetText("Invincible's Reins of Glor")
+Page.TargetChanged(true)
+check("editing the picked name drops the pick", Page.ResolvedTarget() == "Invincible's Reins of Glor", Page.ResolvedTarget())
+
+input:SetText("49636")
+Page.TargetChanged(false)
+check("a number is read as an item ID", feedback.text == "Item ID 49636", feedback.text)
 
 if failures > 0 then
     print(failures .. " pet journal link test(s) failed")

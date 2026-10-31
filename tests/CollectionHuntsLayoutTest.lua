@@ -107,6 +107,17 @@ WBF.CollectionHunts = {
     end,
     Source = function() return { daily = false, instance = "Raid", boss = "Boss" } end,
     Status = function(_, guid) return statuses[guid] end,
+    TargetKind = function(text)
+        text = tostring(text or "")
+        local mount = tonumber(text:match("^%s*mount:(%d+)%s*$")); if mount then return "mount", mount end
+        local pet = tonumber(text:match("battlepet:(%d+)")); if pet then return "pet", pet end
+        local ach = tonumber(text:match("achievement:(%d+)")); if ach then return "achievement", ach end
+        local item = tonumber(text:match("item:(%d+)")) or tonumber(text:match("^%s*(%d+)%s*$")); if item then return "item", item end
+    end,
+    Preview = function() return nil end,
+    MountSourceKey = function() return nil end,
+    Mount = function() return nil end,
+    KnownSource = function() return nil end,
     FindMounts = function()
         return { { id = 1, name = "Drake" }, { id = 2, name = "Reins", collected = true } }
     end,

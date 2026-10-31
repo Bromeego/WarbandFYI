@@ -217,11 +217,15 @@ local function ParseTarget(link)
     if knownID then return "item", knownID end
 end
 
+-- What a typed or Shift-clicked target is: "mount", "pet", "achievement" or
+-- "item", and its ID. nil when the text is none of these.
+Hunts.TargetKind = ParseTarget
+
 -- Explicit source selection: an item link alone cannot establish its drop source.
 function Hunts.AddTarget(link, sourceKey)
     local kind, id = ParseTarget(link)
     local source = sourceRegistry[sourceKey]
-    if not id then return nil, "Enter a known mount name, an item ID, or Shift-click an item or pet (use the achievement picker for achievements)." end
+    if not id then return nil, "Search for a mount and pick it from the list, enter an item ID, or Shift-click an item or pet (use Selected Achievement for achievements)." end
     if not source then return nil, "Choose a supported source." end
     local data = Store()
     local key = kind .. id .. "_" .. sourceKey
