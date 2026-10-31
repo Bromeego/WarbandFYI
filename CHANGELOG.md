@@ -4,6 +4,10 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 
 ## Unreleased
 
+### Fixed
+
+- Blizzard's internal tracking currencies marked **[DNT]** ("do not translate"), such as **[DNT] Nebulous Voidcore Turn-In Tracker**, no longer appear on the Dashboard, in Resources or in activity. Any already tracked disappear after the next login or `/reload`. The same check already kept quests marked [DNT], [NYI] or [PH] out of activity.
+
 ## 0.2.0-dev.2i — 2026-10-31
 
 ### Changed
