@@ -29,6 +29,24 @@ local function Button(parent, width, height, caption, click)
     b:SetScript("OnClick", click)
     return b
 end
+-- Dropdown-style button: caption on the left, a down arrow on the right.
+local function SetDropdown(button, caption)
+    if not button.Arrow then
+        button.Arrow = button:CreateTexture(nil, "OVERLAY")
+        button.Arrow:SetSize(12, 12)
+        button.Arrow:SetPoint("RIGHT", -9, 0)
+        WBF.UI.SetAtlasChain(button.Arrow, { "friendslist-categorybutton-arrow-down", "common-dropdown-icon-down" },
+            "Interface\\ChatFrame\\ChatFrameExpandArrow")
+        local label = button:GetFontString()
+        if label then
+            label:ClearAllPoints()
+            label:SetPoint("LEFT", 10, 0)
+            label:SetPoint("RIGHT", -26, 0)
+            label:SetJustifyH("LEFT")
+        end
+    end
+    button:SetText(caption)
+end
 local function Label(parent, font, text)
     local f = parent:CreateFontString(nil, "OVERLAY", font or "GameFontHighlight")
     f:SetJustifyH("LEFT")
@@ -108,7 +126,7 @@ local function Build(parent)
         RefreshMain()
     end)
     controls.Complete:SetSize(140, 28)
-    controls.Restore = Button(root, 252, 28, "Restore preset hunt  v", function(self)
+    controls.Restore = Button(root, 252, 28, "Restore preset hunt", function(self)
         local hunts = WBF.CollectionHunts
         local catalog, ordered = hunts.Catalog()
         local opts = {}
@@ -126,6 +144,7 @@ local function Build(parent)
         if #opts > 0 then Dropdown(self, opts) end
     end)
     controls.Restore:SetPoint("TOPLEFT", 12, -172)
+    SetDropdown(controls.Restore, "Restore preset hunt")
 
     controls.GoalLabel = Label(root, "GameFontNormal", "Collection goal")
     controls.Goal = Button(root, 200, 28, "", function(self)
@@ -181,10 +200,10 @@ local function Build(parent)
         controls.SourceKey = sourceKey
         if sourceKey then
             local source = WBF.CollectionHunts.Source(sourceKey)
-            controls.SourceSelect:SetText(source.instance .. " - " .. source.boss .. "  v")
+            SetDropdown(controls.SourceSelect, source.instance .. " - " .. source.boss)
             return "Recognised farming source: " .. source.instance .. "."
         end
-        controls.SourceSelect:SetText("Choose raid / boss  v")
+        SetDropdown(controls.SourceSelect, "Choose raid / boss")
         return fallback
     end
     local function PickMount(mount)
@@ -203,6 +222,19 @@ local function Build(parent)
         local b = Button(root, 410, 27, "", function(self)
             if self.mount then PickMount(self.mount) end
         end)
+        b.Icon = b:CreateTexture(nil, "OVERLAY")
+        b.Icon:SetSize(19, 19)
+        b.Icon:SetPoint("LEFT", 5, 0)
+        b.Owned = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        b.Owned:SetPoint("RIGHT", -10, 0)
+        b.Owned:SetText(SUCCESS .. "Owned|r")
+        local label = b:GetFontString()
+        if label then
+            label:ClearAllPoints()
+            label:SetPoint("LEFT", 31, 0)
+            label:SetPoint("RIGHT", -60, 0)
+            label:SetJustifyH("LEFT")
+        end
         controls.MountResults[i] = b
     end
     controls.UseMount = Button(root, 215, 27, "Selected Mount", function()
@@ -239,9 +271,9 @@ local function Build(parent)
         Page.TargetChanged(false)
         controls.Feedback:SetText("Achievement selected. Confirm the raid source and click Add Hunt.")
     end)
-    controls.SourceLabel = Label(root, "GameFontHighlightSmall", "Choose the raid / boss source (holiday bosses included):")
+    controls.SourceLabel = Label(root, "GameFontNormal", "Where does it drop?")
     controls.SourceKey = nil
-    controls.SourceSelect = Button(root, 252, 28, "Choose raid / boss  v", function(self)
+    controls.SourceSelect = Button(root, 252, 28, "", function(self)
         local opts={}
         for _, source in ipairs(WBF.CollectionHunts.Sources()) do
             local sourceKey=source.key
@@ -251,11 +283,12 @@ local function Build(parent)
                 controls.SourceKey=sourceKey
                 confirmedOwnedInput=nil
                 if controls.Add then controls.Add:SetText("Add Hunt") end
-                controls.SourceSelect:SetText(caption.."  v")
+                SetDropdown(controls.SourceSelect, caption)
             end}
         end
         Dropdown(self, opts)
     end)
+    SetDropdown(controls.SourceSelect, "Choose raid / boss")
     controls.Add = Button(root, 252, 29, "Add Hunt", function()
         local input = Page.ResolvedTarget()
         local journalID = tonumber(input:match("^%s*mount:(%d+)%s*$"))
@@ -535,19 +568,23 @@ local function DrawAddForm(width)
         local entry = matches[i]
         b.mount = entry
         if entry then
-            b:SetText((entry.collected and "[Owned] " or "") .. entry.name)
-            b:SetWidth(width)
+            b:SetText(entry.name)
+            b.Icon:SetTexture(entry.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+            b.Owned:SetShown(entry.collected == true)
+            b:SetWidth(width - 5)
             flow:Put(b, 27, 2)
         end
     end
     flow.y = flow.y + 6
-    local half = math.floor((width - 9) / 2)
+    local half = math.floor((width - 5 - 9) / 2)
     controls.UseMount:SetWidth(half)
     controls.UseAchievement:SetWidth(half)
     flow:Row({ { controls.UseMount, half }, { controls.UseAchievement, half } }, 27, 18)
     flow:Text(controls.SourceLabel, 6)
-    controls.SourceSelect:SetWidth(math.min(340, width))
+    controls.SourceSelect:SetWidth(width - 5)
     flow:Put(controls.SourceSelect, 28, 18)
+    controls.Add:SetWidth(width - 5)
+    controls.Add:SetEnabled((controls.Input:GetText() or ""):match("%S") ~= nil)
     flow:Put(controls.Add, 29, 14)
     flow:Text(controls.Feedback, 14)
     controls.Caution:SetText("The Mount Journal supplies names and collection status. Raid and boss data comes from the curated registry or your manual selection; unverified sources aren't guessed.")
@@ -623,13 +660,33 @@ function Page.TargetChanged(userInput)
             end
         end
     end
-    if controls.Feedback then controls.Feedback:SetText(message) end
     local sourceKey = kind == "mount" and WBF.CollectionHunts.MountSourceKey and WBF.CollectionHunts.MountSourceKey(id)
         or WBF.CollectionHunts.KnownSource(target)
+    local journalKey, journalLines
+    if kind and WBF.CollectionHunts.JournalSource then
+        journalKey, journalLines = WBF.CollectionHunts.JournalSource(kind, id)
+    end
+    sourceKey = sourceKey or journalKey
+    if journalLines and #journalLines > 0 then
+        local parts = {}
+        for _, line in ipairs(journalLines) do
+            parts[#parts + 1] = line.label and (line.label .. ": " .. line.value) or line.value
+        end
+        local notes = { message ~= "" and message or nil }
+        notes[#notes + 1] = MUTED .. "Journal: " .. table.concat(parts, ", ") .. "|r"
+        if sourceKey then
+            notes[#notes + 1] = SUCCESS .. "Source chosen automatically. Check it before adding.|r"
+        else
+            notes[#notes + 1] = WARNING .. "This source isn't supported yet. Choose one below if it fits.|r"
+        end
+        message = table.concat(notes, "\n")
+    end
+    if controls.Feedback then controls.Feedback:SetText(message) end
+    if controls.Add then controls.Add:SetEnabled(text:match("%S") ~= nil) end
     if sourceKey and controls.SourceSelect then
         controls.SourceKey = sourceKey
         local source = WBF.CollectionHunts.Source(sourceKey)
-        controls.SourceSelect:SetText(source.instance .. " - " .. source.boss .. "  v")
+        SetDropdown(controls.SourceSelect, source.instance .. " - " .. source.boss)
     end
     if userInput then Page.Refresh() end
 end
@@ -774,7 +831,7 @@ function Page.Refresh()
 
     flow:Put(controls.GoalLabel, 14, 6)
     controls.Goal:SetEnabled(info.defaultGoal~="mount")
-    controls.Goal:SetText((settings.goal or "item"):gsub("^%l",string.upper).."  v")
+    SetDropdown(controls.Goal, ((settings.goal or "item"):gsub("^%l",string.upper)))
     flow:Put(controls.Goal, 28, 8)
     controls.Explain:SetText(finished and
         (completionMethod == "manual" and "Marked complete manually. Reopen if needed." or "Collection goal confirmed by WoW. No further runs required.") or
@@ -785,7 +842,7 @@ function Page.Refresh()
         "Eligibility is unverified for this goal unless WarbandFYI has an explicit rule.")
     flow:Text(controls.Explain, 18)
     flow:Put(controls.ModeLabel, 14, 6)
-    controls.Mode:SetText((settings.characterMode=="selected" and "Selected characters" or "All eligible characters").."  v")
+    SetDropdown(controls.Mode, settings.characterMode=="selected" and "Selected characters" or "All eligible characters")
     flow:Put(controls.Mode, 28, 8)
     controls.EditCharacters:SetText(editingCharacters and "Done editing characters" or "Edit farming characters")
     controls.ShowAll:SetText(showAllCharacters and "Show relevant only" or "Show all characters")

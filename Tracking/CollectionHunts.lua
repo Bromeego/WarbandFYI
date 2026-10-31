@@ -217,6 +217,79 @@ local function ParseTarget(link)
     if knownID then return "item", knownID end
 end
 
+-- The Journal's own "where it comes from" text, for a mount, a pet, or an
+-- item that teaches one. Same text as the Journal tooltip, e.g.
+-- "|cFFFFD200Drop:|r Headless Horseman|n|cFFFFD200Zone:|r Scarlet Monastery".
+local function JournalSourceText(kind, id)
+    if kind == "item" then
+        local species = PetSpeciesForItem(id)
+        if species then
+            kind, id = "pet", species
+        elseif C_MountJournal and C_MountJournal.GetMountFromItem then
+            local mountID = WBF.Format.AsNumber((WBF.Format.SafeCall(C_MountJournal.GetMountFromItem, id)))
+            if not mountID then return nil end
+            kind, id = "mount", mountID
+        else
+            return nil
+        end
+    end
+    if kind == "mount" then
+        local mount = Hunts.Mount(id)
+        return mount and WBF.Format.PlainString(mount.sourceText)
+    end
+    if kind == "pet" and C_PetJournal and C_PetJournal.GetPetInfoBySpeciesID then
+        return WBF.Format.PlainString((select(5, WBF.Format.SafeCall(C_PetJournal.GetPetInfoBySpeciesID, id))))
+    end
+end
+
+-- Journal source text as { label, value } lines with colours and icons removed.
+function Hunts.SourceLines(text)
+    local lines = {}
+    text = WBF.Format.PlainString(text)
+    if not text then return lines end
+    text = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|T.-|t", ""):gsub("|n", "\n")
+    for line in text:gmatch("[^\n]+") do
+        local label, value = line:match("^%s*(.-)%s*:%s*(.-)%s*$")
+        if label and value ~= "" then
+            lines[#lines + 1] = { label = label, value = value }
+        elseif line:match("%S") then
+            lines[#lines + 1] = { value = line:gsub("^%s+", ""):gsub("%s+$", "") }
+        end
+    end
+    return lines
+end
+
+-- Match Journal source text to a curated source by boss name, preferring one
+-- whose instance also appears. Only curated sources are returned: a boss the
+-- registry does not know is reported, never guessed.
+function Hunts.SourceFromText(text)
+    local lines = Hunts.SourceLines(text)
+    local values = {}
+    for _, line in ipairs(lines) do values[NormalizeName(line.value)] = true end
+    local best, bestScore, tied = nil, 0, false
+    for _, key in ipairs(sourceKeys) do
+        local source = sourceRegistry[key]
+        if values[NormalizeName(source.boss)] then
+            local score = values[NormalizeName(source.instance)] and 2 or 1
+            if score > bestScore then
+                best, bestScore, tied = key, score, false
+            elseif score == bestScore then
+                tied = true
+            end
+        end
+    end
+    if tied then best = nil end
+    return best, lines
+end
+
+-- Curated source for a target, read from the Journal's source text.
+-- Returns the source key (or nil) and the Journal's source lines.
+function Hunts.JournalSource(kind, id)
+    local text = JournalSourceText(kind, id)
+    if not text then return nil, {} end
+    return Hunts.SourceFromText(text)
+end
+
 -- What a typed or Shift-clicked target is: "mount", "pet", "achievement" or
 -- "item", and its ID. nil when the text is none of these.
 Hunts.TargetKind = ParseTarget
