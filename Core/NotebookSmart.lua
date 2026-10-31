@@ -761,16 +761,12 @@ function WBF.NotebookSmart.Register(bus)
             return
         end
         -- A linked checklist can be visible in the floating FYI while the
-        -- main WarbandFYI window is closed, so keep that live too.
-        if WBF.UI and WBF.UI.Fyi and WBF.UI.Fyi.Refresh then
-            WBF.UI.Fyi.Refresh()
-        end
+        -- main WarbandFYI window is closed, so keep that live too. The FYI
+        -- always refreshes; the window only when it shows the notebook.
         local window = WBF.UI and WBF.UI.frame
-        if not window or not window.IsShown or not window:IsShown() or window.view ~= "notebook" then
-            return
-        end
-        if WBF.Notebook and WBF.Notebook.RefreshOpen then
-            WBF.Notebook.RefreshOpen()
+        local notebookShown = window and window.IsShown and window:IsShown() and window.view == "notebook"
+        if WBF.Notebook and WBF.Notebook.RequestRefreshOpen then
+            WBF.Notebook.RequestRefreshOpen(notebookShown and true or false)
         end
     end
     bus:On("ITEM_DATA_LOAD_RESULT", function(itemID)

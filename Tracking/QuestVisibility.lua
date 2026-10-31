@@ -245,10 +245,39 @@ function WBF.QuestVisibility.IsPlayerActivity(event)
     return true
 end
 
+-- QUEST_LOG_UPDATE fires many times a second while questing. Scan straight
+-- away, then at most once per interval, with one trailing scan so the last
+-- update in a burst is still read.
+local SCAN_INTERVAL = 1
+local lastScanAt = nil
+local trailingQueued = false
+
+local function ThrottledScan()
+    local clock = type(GetTime) == "function" and GetTime() or nil
+    if not clock or not (C_Timer and C_Timer.After) then
+        ScanLog()
+        return
+    end
+    if not lastScanAt or (clock - lastScanAt) >= SCAN_INTERVAL then
+        lastScanAt = clock
+        ScanLog()
+        return
+    end
+    if trailingQueued then
+        return
+    end
+    trailingQueued = true
+    C_Timer.After(SCAN_INTERVAL - (clock - lastScanAt), function()
+        trailingQueued = false
+        lastScanAt = type(GetTime) == "function" and GetTime() or nil
+        ScanLog()
+    end)
+end
+
 function WBF.QuestVisibility.Register(bus)
     AbsorbEnumTags()
     bus:On("QUEST_LOG_UPDATE", function()
-        ScanLog()
+        ThrottledScan()
     end)
     ScanLog()
 end

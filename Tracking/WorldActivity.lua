@@ -1003,6 +1003,9 @@ local function Inspect(unit)
     local guid = WBF.Format.PlainString(WBF.Format.SafeCall(UnitGUID, unit))
     local classification = WBF.Format.PlainString(WBF.Format.SafeCall(UnitClassification, unit))
     if not guid or (classification ~= "rare" and classification ~= "rareelite") then
+        -- This token no longer points at a rare, so health ticks stop
+        -- re-inspecting it until a target or nameplate change brings one back.
+        watched[unit] = nil
         return
     end
     local name = WBF.Format.PlainString(WBF.Format.SafeCall(UnitName, unit))
@@ -1275,7 +1278,9 @@ function WBF.WorldActivity.Register(bus)
         if WBF.Format.IsSecret(unit) or type(unit) ~= "string" then
             return
         end
-        if watched[unit] or unit == "target" or unit == "focus" or unit == "mouseover" then
+        -- Only units already seen as rares. Target, focus and mouseover are
+        -- inspected on their own change events, which fill watched for rares.
+        if watched[unit] then
             Inspect(unit)
         end
     end)
