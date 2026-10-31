@@ -4,11 +4,15 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 
 ## Unreleased
 
+## 0.2.0-dev.2h — 2026-10-31
+
 ### Changed
 
 - The Collection Hunts page lays out its detail column top to bottom: target, actions, collection goal, farming characters, this week's status, then the character lists. Sections no longer overlap, and the page uses the full window width when it is wider.
 - The selected hunt in the list is highlighted, and hunt icons no longer disappear behind the button.
 - Empty pages now explain what will show up and how to get started: Activity, the Dashboard, detail pages, Pet Battles and Collection Hunts with no hunts.
+- Notebook reads no longer re-check the whole notebook on every call. Listing 20 pages with 300 blocks went from about 1.6 seconds to under a millisecond in testing, so large notebooks stay responsive.
+- Dashboard currency tiles read the event log once per refresh instead of once per tracked resource, cutting a full-log week refresh from roughly 100–300 ms to under 30 ms in testing.
 
 ### Fixed
 
@@ -81,9 +85,6 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 - An unavailable starting level no longer produces an assumed one-level gain.
 
 ### Changed
-
-- Notebook reads no longer re-check the whole notebook on every call. Listing 20 pages with 300 blocks went from about 1.6 seconds to under a millisecond in testing, so large notebooks stay responsive.
-- Dashboard currency tiles read the event log once per refresh instead of once per tracked resource, cutting a full-log week refresh from roughly 100–300 ms to under 30 ms in testing.
 
 - Balance History and Net Gold History draw a smooth, anti-aliased line with a soft glow and a gradient fill. Observation dots appear on hover; only the latest point stays marked.
 
