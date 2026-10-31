@@ -804,6 +804,11 @@ function WBF.NotebookFyi.SaveLogin(target)
     return trigger
 end
 
+local function HuntsCard()
+    local Hunts = WBF.CollectionHunts
+    return Hunts and Hunts.LoginEntry and Hunts.LoginEntry() or nil
+end
+
 function WBF.NotebookFyi.ShowLoginFYIs()
     if not WBF.NotebookFyi.Enabled() then return end
     -- In combat the popup queues this group and opens it once combat ends.
@@ -819,13 +824,40 @@ function WBF.NotebookFyi.ShowLoginFYIs()
             end
         end
     end
-    if WBF.CollectionHunts and WBF.CollectionHunts.LoginEntry then
-        local huntEntry = WBF.CollectionHunts.LoginEntry()
-        if huntEntry then entries[#entries + 1] = huntEntry end
+    local Fyi = WBF.UI and WBF.UI.Fyi
+    if not (Fyi and Fyi.Show) then return end
+    local hunts = HuntsCard() ~= nil
+    -- Another FYI, such as Active events, may already be on screen. The hunts
+    -- list joins it rather than waiting behind it unseen.
+    if hunts and Fyi.IsShown and Fyi.IsShown() and Fyi.Attach and Fyi.Attach("hunts", HuntsCard) then
+        hunts = false
     end
-    if #entries > 0 and WBF.UI and WBF.UI.Fyi and WBF.UI.Fyi.Show then
-        WBF.UI.Fyi.Show({ contextType = "LOGIN", contextName = "Character reminders", count = #entries, entries = entries, ids = ids })
+    if #entries > 0 or hunts then
+        Fyi.Show({ contextType = "LOGIN", contextName = #entries > 0 and "Character reminders" or "Collection Hunts",
+            count = #entries, entries = entries, ids = ids, attach = hunts and { hunts = HuntsCard } or nil })
     end
+end
+
+-- True when there are Collection Hunts the FYI popup could list.
+function WBF.NotebookFyi.HuntsOffered()
+    local Hunts = WBF.CollectionHunts
+    return Hunts and Hunts.Active and #Hunts.Active() > 0 or false
+end
+
+-- Shows which characters can attempt each hunt now: in the popup on screen,
+-- or in a popup of its own. Says so in chat when nothing is available.
+function WBF.NotebookFyi.ShowHunts()
+    local Fyi = WBF.UI and WBF.UI.Fyi
+    if not (Fyi and Fyi.Show) then return false end
+    if not HuntsCard() then
+        print("|cffd4af37WarbandFYI|r No character can make a Collection Hunt attempt right now.")
+        return false
+    end
+    if Fyi.IsShown and Fyi.IsShown() and Fyi.Attach then
+        return Fyi.Attach("hunts", HuntsCard)
+    end
+    return Fyi.Show({ contextType = "LOGIN", contextName = "Collection Hunts", count = 0, entries = {}, ids = {},
+        attach = { hunts = HuntsCard } })
 end
 
 function WBF.NotebookFyi.Remove(id)

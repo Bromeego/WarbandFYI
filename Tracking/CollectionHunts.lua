@@ -875,7 +875,7 @@ function Hunts.LoginEntry()
     end
     if #lines == 0 then return nil end
     return { title = "Available Collection Hunts", context = "Characters that can make an attempt",
-        lines = lines, triggerType = "LOGIN" }
+        lines = lines, triggerType = "LOGIN", attachKey = "hunts", openHunts = true }
 end
 
 local function Notify()
@@ -939,8 +939,11 @@ function Hunts.Slash(raw)
         setting.selected[character.guid] = cmd == "include" or nil
         Say((cmd == "include" and "Included " or "Excluded ") .. character.name .. " for " .. catalog[target].title)
         Notify()
+    elseif cmd == "fyi" then
+        if WBF.NotebookFyi and WBF.NotebookFyi.ShowHunts then WBF.NotebookFyi.ShowHunts() end
     else
         Say("Collection Hunts commands:")
+        Say("/wbfyi hunt fyi  - show which characters can make an attempt now")
         Say("/wbfyi hunt add|remove <thoridal|onyxian|southwind>")
         Say("/wbfyi hunt goal <key> achievement|appearance|item|mount|pet")
         Say("/wbfyi hunt chars <key> all|selected")

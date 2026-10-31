@@ -149,6 +149,37 @@ popup:Hide()
 runTimers()
 check("no duplicate login FYI was queued", not popup:IsShown())
 
+-- Collection Hunts joins whichever popup is open instead of queueing behind it.
+popup:Hide()
+runTimers()
+local huntsBuilt = 0
+local function huntsCard()
+    huntsBuilt = huntsBuilt + 1
+    return { title = "Available Collection Hunts", lines = { { text = "Drake of the South Wind" } }, openHunts = true }
+end
+check("nothing to attach to while no popup is open", Fyi.Attach("hunts", huntsCard) == false)
+Fyi.Show(group("WOW_EVENT", "Active events"))
+check("the hunts card joins the open events popup", Fyi.Attach("hunts", huntsCard) == true
+    and popup.contextType == "WOW_EVENT" and popup.attachedKeys.hunts == true)
+check("nothing is queued behind the events popup", Fyi.ShowQueued() == false)
+local before = huntsBuilt
+Fyi.Show(group("WOW_EVENT", "Active events"))
+check("redrawing the popup rebuilds the hunts card", huntsBuilt > before and popup.attachedKeys.hunts == true)
+popup:Hide()
+runTimers()
+Fyi.Show(group("ZONE", "Dornogal", { zoneMapID = 101, zoneName = "Dornogal" }))
+check("closing the popup drops the hunts card", popup:IsShown() and not popup.attachedKeys.hunts)
+popup:Hide()
+runTimers()
+
+check("a popup can hold only the hunts card", Fyi.Show({ contextType = "LOGIN", contextName = "Collection Hunts",
+    entries = {}, ids = {}, attach = { hunts = huntsCard } }) == true and popup.attachedKeys.hunts == true)
+check("an empty group without attached cards is not shown", (function()
+    popup:Hide()
+    runTimers()
+    return Fyi.Show({ contextType = "LOGIN", entries = {}, ids = {} }) == false and not popup:IsShown()
+end)())
+
 if failures > 0 then
     error(failures .. " FYI queue test(s) failed")
 end
