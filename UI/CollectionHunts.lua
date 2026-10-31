@@ -711,10 +711,18 @@ function Page.TargetChanged(userInput)
     end
     if controls.Feedback then controls.Feedback:SetText(message) end
     if controls.Add then controls.Add:SetEnabled(text:match("%S") ~= nil) end
+    -- A new target never inherits the previous target's source. A source the
+    -- player chose by hand stays while the target itself is unchanged.
+    local identity = kind and (kind .. ":" .. id) or nil
+    local targetChanged = identity ~= controls.LastTarget
+    controls.LastTarget = identity
     if sourceKey and controls.SourceSelect then
         controls.SourceKey = sourceKey
         local source = WBF.CollectionHunts.Source(sourceKey)
         SetDropdown(controls.SourceSelect, source.instance .. " - " .. source.boss)
+    elseif targetChanged and controls.SourceSelect then
+        controls.SourceKey = nil
+        SetDropdown(controls.SourceSelect, "Choose raid / boss")
     end
     if userInput then Page.Refresh() end
 end

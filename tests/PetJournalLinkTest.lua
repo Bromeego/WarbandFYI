@@ -254,6 +254,25 @@ input:SetText("49636")
 Page.TargetChanged(false)
 check("a number is read as an item ID", feedback.text == "Item ID 49636", feedback.text)
 
+-- A new target does not keep the previous target's source.
+-- (A refresh outside the add view hides the box; the add view shows it.)
+input.shown = true
+WBF.CollectionHunts.KnownSource = function(text) return tostring(text):find("Arfus", 1, true) and "headless" or nil end
+WBF.CollectionHunts.Source = function() return { instance = "Hallow's End", boss = "Headless Horseman" } end
+input:SetText("")
+existingButton.speciesID = 4321
+existingButton:Click()
+check("a recognised pet chooses its source", page.controls.SourceKey == "headless", tostring(page.controls.SourceKey) .. " " .. input.text)
+PETS[1178] = "Blackfuse Bombling"
+existingButton.speciesID = 1178
+existingButton:Click()
+check("the next pet with no known source clears the old one", page.controls.SourceKey == nil, tostring(page.controls.SourceKey))
+page.controls.SourceKey = "manual"
+Page.TargetChanged(true)
+check("a hand-picked source stays while the target is unchanged", page.controls.SourceKey == "manual")
+page.controls.SourceKey = nil
+WBF.CollectionHunts.KnownSource = function() return nil end
+
 -- Use Current Selection reads whichever window is open ----------------------------
 
 local use = page.controls.UseSelection
