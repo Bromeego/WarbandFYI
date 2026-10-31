@@ -29,6 +29,38 @@ local function Button(parent, width, height, caption, click)
     b:SetScript("OnClick", click)
     return b
 end
+-- Dropdown-style button: caption on the left, a down arrow on the right.
+local function SetDropdown(button, caption)
+    if not button.Arrow then
+        button.Arrow = button:CreateTexture(nil, "OVERLAY")
+        button.Arrow:SetSize(12, 12)
+        button.Arrow:SetPoint("RIGHT", -9, 0)
+        WBF.UI.SetAtlasChain(button.Arrow, { "friendslist-categorybutton-arrow-down", "common-dropdown-icon-down" },
+            "Interface\\ChatFrame\\ChatFrameExpandArrow")
+        local label = button:GetFontString()
+        if label then
+            label:ClearAllPoints()
+            label:SetPoint("LEFT", 10, 0)
+            label:SetPoint("RIGHT", -26, 0)
+            label:SetJustifyH("LEFT")
+        end
+    end
+    button:SetText(caption)
+end
+-- A battlepet link for a Journal pet: Blizzard's own for an owned pet, or
+-- one built from the species for a pet not yet collected.
+local function PetLink(speciesID, petID)
+    if petID and C_PetJournal and C_PetJournal.GetBattlePetLink then
+        local link = WBF.Format.PlainString(WBF.Format.SafeCall(C_PetJournal.GetBattlePetLink, petID))
+        if link then return link end
+    end
+    if type(speciesID) ~= "number" or speciesID <= 0 then return nil end
+    local name
+    if C_PetJournal and C_PetJournal.GetPetInfoBySpeciesID then
+        name = WBF.Format.PlainString((WBF.Format.SafeCall(C_PetJournal.GetPetInfoBySpeciesID, speciesID)))
+    end
+    return string.format("|cffffd200|Hbattlepet:%d:1:0:0:0:0:0000000000000000|h[%s]|h|r", speciesID, name or ("Pet #" .. speciesID))
+end
 local function Label(parent, font, text)
     local f = parent:CreateFontString(nil, "OVERLAY", font or "GameFontHighlight")
     f:SetJustifyH("LEFT")
@@ -108,7 +140,7 @@ local function Build(parent)
         RefreshMain()
     end)
     controls.Complete:SetSize(140, 28)
-    controls.Restore = Button(root, 252, 28, "Restore preset hunt  v", function(self)
+    controls.Restore = Button(root, 252, 28, "Restore preset hunt", function(self)
         local hunts = WBF.CollectionHunts
         local catalog, ordered = hunts.Catalog()
         local opts = {}
@@ -126,6 +158,7 @@ local function Build(parent)
         if #opts > 0 then Dropdown(self, opts) end
     end)
     controls.Restore:SetPoint("TOPLEFT", 12, -172)
+    SetDropdown(controls.Restore, "Restore preset hunt")
 
     controls.GoalLabel = Label(root, "GameFontNormal", "Collection goal")
     controls.Goal = Button(root, 200, 28, "", function(self)
@@ -171,99 +204,118 @@ local function Build(parent)
     end)
 
     controls.AddHeading = Label(root, "GameFontNormal", "Add a hunt")
-    controls.MountSearchLabel = Label(root, "GameFontNormal", "Find a mount in your Mount Journal")
-    controls.MountSearch = WBF.UI.EditBox(root, 390, 26)
-    controls.MountSearch:SetMaxLetters(100)
-    controls.MountSearch:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
-    controls.MountSearch:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
-    controls.MountResults = {}
-    for i=1,6 do
-        local b = Button(root, 410, 27, "", function(self)
-            local mount = self.mount
-            if not mount then return end
-            controls.Input:SetText("mount:" .. mount.id)
-            controls.MountSearch:SetText(mount.name)
-            controls.MountSearch:ClearFocus()
-            local sourceKey = WBF.CollectionHunts.MountSourceKey(mount.id)
-            controls.SourceKey = sourceKey
-            if sourceKey then
-                local source = WBF.CollectionHunts.Source(sourceKey)
-                controls.SourceSelect:SetText(source.instance .. " - " .. source.boss .. "  v")
-                controls.Feedback:SetText("Recognised farming source: " .. source.instance .. ".")
-            else
-                controls.SourceSelect:SetText("Choose raid / boss  v")
-                controls.Feedback:SetText("Mount selected. Confirm a supported raid source manually; the Journal source text is not a verified boss ID.")
-            end
-            confirmedOwnedInput = nil
-            controls.Add:SetText("Add Hunt")
-            Page.Refresh()
-        end)
-        controls.MountResults[i] = b
-    end
-    controls.MountSearch:SetScript("OnTextChanged", function(self, userInput)
-        if userInput then Page.Refresh() end
-    end)
-    controls.UseMount = Button(root, 252, 27, "Use Selected Mount", function()
-        local selected = MountJournal and MountJournal.selectedMountID
-        if type(selected) ~= "number" then
-            controls.Feedback:SetText("Could not read the selected Mount Journal entry. Search for the mount above instead.")
-            return
-        end
-        local entry = WBF.CollectionHunts.Mount(selected)
-        if not entry then controls.Feedback:SetText("Selected mount is not available in the journal index."); return end
-        controls.MountSearch:SetText(entry.name)
-        controls.Input:SetText("mount:" .. selected)
-        local sourceKey = WBF.CollectionHunts.MountSourceKey(selected)
+    -- One target box. Typing searches the Mount Journal; Shift-clicking a bag
+    -- item, Pet Journal pet or achievement drops its link in; a number is an
+    -- item ID. A picked mount shows its name while the hunt is added by ID.
+    controls.TargetLabel = Label(root, "GameFontNormal", "What are you hunting?")
+    controls.AddHint = Label(root, "GameFontHighlightSmall", "")
+    controls.Picked = nil
+    local function ShowSource(sourceKey, fallback)
         controls.SourceKey = sourceKey
         if sourceKey then
             local source = WBF.CollectionHunts.Source(sourceKey)
-            controls.SourceSelect:SetText(source.instance .. " - " .. source.boss .. "  v")
-        else controls.SourceSelect:SetText("Choose raid / boss  v") end
+            SetDropdown(controls.SourceSelect, source.instance .. " - " .. source.boss)
+            return "Recognised farming source: " .. source.instance .. "."
+        end
+        SetDropdown(controls.SourceSelect, "Choose raid / boss")
+        return fallback
+    end
+    local function PickMount(mount)
+        controls.Picked = { text = mount.name, target = "mount:" .. mount.id }
+        controls.Input:SetText(mount.name)
+        controls.Input:SetCursorPosition(#mount.name)
+        controls.Input:ClearFocus()
+        controls.Feedback:SetText(ShowSource(WBF.CollectionHunts.MountSourceKey(mount.id),
+            "Mount selected. Confirm a supported raid source manually; the Journal source text is not a verified boss ID."))
+        confirmedOwnedInput = nil
+        controls.Add:SetText("Add Hunt")
         Page.Refresh()
-    end)
-    controls.AddHint = Label(root, "GameFontHighlightSmall", "Mounts: search the Journal above. Items: Shift-click a bag item. Pets: Shift-click one in the Pet Journal. Achievements: use selected achievement.")
+    end
+    controls.MountResults = {}
+    for i=1,6 do
+        local b = Button(root, 410, 27, "", function(self)
+            if self.mount then PickMount(self.mount) end
+        end)
+        b.Icon = b:CreateTexture(nil, "OVERLAY")
+        b.Icon:SetSize(19, 19)
+        b.Icon:SetPoint("LEFT", 5, 0)
+        b.Owned = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        b.Owned:SetPoint("RIGHT", -10, 0)
+        b.Owned:SetText(SUCCESS .. "Owned|r")
+        local label = b:GetFontString()
+        if label then
+            label:ClearAllPoints()
+            label:SetPoint("LEFT", 31, 0)
+            label:SetPoint("RIGHT", -60, 0)
+            label:SetJustifyH("LEFT")
+        end
+        controls.MountResults[i] = b
+    end
     controls.Input = WBF.UI.EditBox(root, 240, 25)
     controls.Input:SetMaxLetters(300)
     controls.Input:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
     controls.Input:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
     controls.Input:SetScript("OnTextChanged", function(self, userInput)
-        if not userInput then return end
-        confirmedOwnedInput = nil
-        if controls.Add then controls.Add:SetText("Add Hunt") end
-        local journalID = tonumber(self:GetText():match("^%s*mount:(%d+)%s*$"))
-        local journal = journalID and WBF.CollectionHunts.Mount(journalID)
-        local preview = journal and {collected=journal.collected} or WBF.CollectionHunts.Preview(self:GetText())
-        if preview and preview.collected == true and controls.Feedback then
-            controls.Feedback:SetText("Already collected in your Mount Journal. You can still add this hunt if you want to.")
-        elseif controls.Feedback then
-            controls.Feedback:SetText("")
-        end
-        local sourceKey = WBF.CollectionHunts.KnownSource(self:GetText())
-        if sourceKey then
-            controls.SourceKey = sourceKey
-            local source = WBF.CollectionHunts.Source(sourceKey)
-            if controls.SourceSelect then controls.SourceSelect:SetText(source.instance.." - "..source.boss.."  v") end
-        end
+        Page.TargetChanged(userInput)
     end)
-    -- Retail achievement Shift-click can toggle Blizzard's own tracking instead
-    -- of inserting a chat link. Use Blizzard's current selection explicitly.
-    controls.UseAchievement = Button(root, 252, 27, "Use Selected Achievement", function()
-        local id
-        if type(AchievementFrameAchievements_GetSelectedAchievementId) == "function" then
-            id = AchievementFrameAchievements_GetSelectedAchievementId()
+    -- One button for whatever is selected in an open window: the Mount
+    -- Journal, the Pet Journal, or the Achievements window.
+    local function SelectionTargets()
+        local found = {}
+        if MountJournal and MountJournal:IsVisible() then
+            local entry = type(MountJournal.selectedMountID) == "number" and WBF.CollectionHunts.Mount(MountJournal.selectedMountID)
+            found[#found + 1] = { window = "Mount Journal", mount = entry or nil }
         end
-        if type(id) ~= "number" or id <= 0 then
-            controls.Feedback:SetText("Select an achievement in WoW's Achievements window first, then click here.")
+        if PetJournal and PetJournal:IsVisible() then
+            local card = PetJournalPetCard
+            local species = card and WBF.Format.AsNumber(card.speciesID)
+            local link = card and PetLink(species, card.petID)
+            found[#found + 1] = { window = "Pet Journal", link = link }
+        end
+        if AchievementFrame and AchievementFrame:IsVisible() then
+            local id
+            if type(AchievementFrameAchievements_GetSelectedAchievementId) == "function" then
+                id = AchievementFrameAchievements_GetSelectedAchievementId()
+            end
+            local link
+            if type(id) == "number" and id > 0 then
+                link = (GetAchievementLink and GetAchievementLink(id)) or ("achievement:" .. id)
+            end
+            found[#found + 1] = { window = "Achievements window", link = link }
+        end
+        return found
+    end
+    controls.UseSelection = Button(root, 430, 27, "Use Current Selection", function()
+        local found = SelectionTargets()
+        if #found == 0 then
+            controls.Feedback:SetText("Open the Mount Journal, Pet Journal or Achievements window and select something first.")
             return
         end
-        local link = GetAchievementLink and GetAchievementLink(id)
-        controls.Input:SetText(link or ("achievement:" .. id))
-        controls.Input:SetCursorPosition(#controls.Input:GetText())
-        controls.Feedback:SetText("Achievement selected. Confirm the raid source and click Add Hunt.")
+        if #found > 1 then
+            local names = {}
+            for _, entry in ipairs(found) do names[#names + 1] = entry.window end
+            controls.Feedback:SetText("Both the " .. table.concat(names, " and the ") .. " are open. Close one so it's clear which to use.")
+            return
+        end
+        local pick = found[1]
+        if pick.mount then
+            PickMount(pick.mount)
+        elseif pick.link then
+            controls.Input:SetText(pick.link)
+            controls.Input:SetCursorPosition(#pick.link)
+            Page.TargetChanged(false)
+            Page.Refresh()
+        else
+            controls.Feedback:SetText("Nothing is selected in the " .. pick.window .. ". Select an entry there first.")
+        end
     end)
-    controls.SourceLabel = Label(root, "GameFontHighlightSmall", "Choose the raid / boss source (holiday bosses included):")
+    WBF.UI.Tooltip(controls.UseSelection, function(tip)
+        tip:SetText("Use Current Selection", 1, 0.82, 0.45)
+        WBF.UI.AddTip(tip, "Fills the box with what's selected in the open Mount Journal, Pet Journal or Achievements window.", WBF.UI.Colors.tipText, true)
+    end)
+    controls.SourceLabel = Label(root, "GameFontNormal", "Where does it drop?")
     controls.SourceKey = nil
-    controls.SourceSelect = Button(root, 252, 28, "Choose raid / boss  v", function(self)
+    controls.SourceSelect = Button(root, 252, 28, "", function(self)
         local opts={}
         for _, source in ipairs(WBF.CollectionHunts.Sources()) do
             local sourceKey=source.key
@@ -273,13 +325,14 @@ local function Build(parent)
                 controls.SourceKey=sourceKey
                 confirmedOwnedInput=nil
                 if controls.Add then controls.Add:SetText("Add Hunt") end
-                controls.SourceSelect:SetText(caption.."  v")
+                SetDropdown(controls.SourceSelect, caption)
             end}
         end
         Dropdown(self, opts)
     end)
+    SetDropdown(controls.SourceSelect, "Choose raid / boss")
     controls.Add = Button(root, 252, 29, "Add Hunt", function()
-        local input = controls.Input:GetText()
+        local input = Page.ResolvedTarget()
         local journalID = tonumber(input:match("^%s*mount:(%d+)%s*$"))
         local journal = journalID and WBF.CollectionHunts.Mount(journalID)
         local preview = journal and {collected=journal.collected} or WBF.CollectionHunts.Preview(input)
@@ -292,10 +345,11 @@ local function Build(parent)
         end
         confirmedOwnedInput = nil
         controls.Add:SetText("Add Hunt")
-        local key, err = WBF.CollectionHunts.AddTarget(controls.Input:GetText(), controls.SourceKey)
+        local key, err = WBF.CollectionHunts.AddTarget(input, controls.SourceKey)
         if key then
             selectedKey=key
             controls.Input:SetText("")
+            controls.Picked = nil
             controls.Feedback:SetText("Added hunt. Verify the raid source and farming eligibility.")
             Page.Refresh()
             RefreshMain()
@@ -335,22 +389,23 @@ local function Build(parent)
     divider:SetColorTexture(WBF.UI.Colors.line[1], WBF.UI.Colors.line[2], WBF.UI.Colors.line[3], WBF.UI.Colors.line[4])
     divider:SetPoint("TOPLEFT",278,-75)
     divider:SetSize(1,670)
+    local FillInput
     local function InsertLink(link)
         -- Bag/item links may pass through HandleModifiedItemClick without ever
         -- reaching ChatEdit_InsertLink (particularly when chat is closed).
         -- Do not steal links unless the user is editing this field on this page.
         if not (root and root:IsVisible() and controls.Input and controls.Input:HasFocus()) then return end
+        FillInput(link)
+    end
+    function FillInput(link)
         if type(link) ~= "string" then return end
         -- Pet Journal Shift-clicks arrive as battlepet links.
         if not (link:find("|Hitem:", 1, true) or link:find("|Hachievement:", 1, true) or link:find("|Hbattlepet:", 1, true)
             or link:match("^item:%d+") or link:match("^achievement:%d+")) then return end
         controls.Input:SetText(link)
         controls.Input:SetCursorPosition(#link)
-        local sourceKey = WBF.CollectionHunts.KnownSource(link)
-        if sourceKey then
-            controls.SourceKey = sourceKey
-            local source = WBF.CollectionHunts.Source(sourceKey)
-            controls.SourceSelect:SetText(source.instance.." - "..source.boss.."  v")
+        Page.TargetChanged(false)
+        if WBF.CollectionHunts.KnownSource(link) then
             controls.Feedback:SetText("Recognised item source; check it before adding.")
         end
     end
@@ -372,21 +427,97 @@ local function Build(parent)
         end)
         achievementHooked = true
     end
+    -- Pet Journal Shift-clicks only make a chat link for owned pets, and newer
+    -- clients send it through ChatFrameUtil.InsertLink. Uncollected pets, the
+    -- usual hunt target, produce no link at all. Read the species straight
+    -- from the clicked list button or pet card instead.
+    -- Clicking around the Pet Journal can take focus from the hunt box, and an
+    -- uncollected pet has no chat link to compete with. Take the pet whenever
+    -- the Add Hunt box is on screen, unless the player is typing in chat.
+    local function ChatOpen()
+        local active = (ChatFrameUtil and ChatFrameUtil.GetActiveWindow and WBF.Format.SafeCall(ChatFrameUtil.GetActiveWindow))
+            or (ChatEdit_GetActiveWindow and WBF.Format.SafeCall(ChatEdit_GetActiveWindow))
+        return active ~= nil and active ~= false
+    end
+    local function TakePetClick(button)
+        if not (IsShiftKeyDown and IsShiftKeyDown()) then return end
+        if not (root and root:IsVisible() and controls.Input and controls.Input:IsVisible()) then
+            if WBF.Debug then WBF.Debug.Log("Pet Shift-click ignored: Add Hunt box not on screen.") end
+            return
+        end
+        if not controls.Input:HasFocus() and ChatOpen() then
+            if WBF.Debug then WBF.Debug.Log("Pet Shift-click left for chat: chat box is open.") end
+            return
+        end
+        if type(button) ~= "table" then return end
+        -- The icon is a child button (dragButton on list rows, PetInfo on the
+        -- card) that keeps the pet on its parent.
+        local owner = button
+        for _ = 1, 2 do
+            if owner.petID or owner.speciesID or not owner.GetParent then break end
+            local parent = owner:GetParent()
+            if type(parent) ~= "table" then break end
+            owner = parent
+        end
+        local petID = owner.petID
+        local speciesID = WBF.Format.AsNumber(owner.speciesID)
+        if not speciesID and petID and C_PetJournal and C_PetJournal.GetPetInfoByPetID then
+            speciesID = WBF.Format.AsNumber((WBF.Format.SafeCall(C_PetJournal.GetPetInfoByPetID, petID)))
+        end
+        local link = PetLink(speciesID, petID)
+        if WBF.Debug then WBF.Debug.Log("Pet Shift-click: species", tostring(speciesID), "petID", tostring(petID), link and "linked" or "no link") end
+        if link then
+            FillInput(link)
+            controls.Input:SetFocus()
+        end
+    end
+    local petHooked = {}
+    local function HookPetButton(button)
+        if type(button) ~= "table" or petHooked[button] or not button.HookScript then return end
+        if pcall(button.HookScript, button, "OnClick", TakePetClick) then
+            petHooked[button] = true
+        end
+        HookPetButton(button.dragButton)
+        HookPetButton(button.PetInfo)
+    end
+    local petListHooked = false
+    local function HookPetJournal()
+        if petListHooked or not PetJournal then return end
+        petListHooked = true
+        HookPetButton(PetJournalPetCard)
+        HookPetButton(PetJournalPetCardPetInfo)
+        local scrollBox = PetJournal.ScrollBox
+        if scrollBox then
+            if scrollBox.ForEachFrame then
+                pcall(scrollBox.ForEachFrame, scrollBox, HookPetButton)
+            end
+            if scrollBox.RegisterCallback and ScrollBoxListMixin and ScrollBoxListMixin.Event and ScrollBoxListMixin.Event.OnAcquiredFrame then
+                pcall(scrollBox.RegisterCallback, scrollBox, ScrollBoxListMixin.Event.OnAcquiredFrame, function(_, frame)
+                    HookPetButton(frame)
+                end, root)
+            end
+        end
+    end
     if hooksecurefunc then
         if type(HandleModifiedItemClick) == "function" then
             hooksecurefunc("HandleModifiedItemClick", InsertLink)
+        end
+        if ChatFrameUtil and type(ChatFrameUtil.InsertLink) == "function" then
+            hooksecurefunc(ChatFrameUtil, "InsertLink", InsertLink)
         end
         if type(ChatEdit_InsertLink) == "function" then
             hooksecurefunc("ChatEdit_InsertLink", InsertLink)
         end
     end
     HookAchievementButtons()
+    HookPetJournal()
     -- Blizzard_AchievementUI is load-on-demand. Installing its hook only at
     -- Collection Hunts page creation misses it when achievements open later.
     local loadWatcher = CreateFrame("Frame")
     loadWatcher:RegisterEvent("ADDON_LOADED")
     loadWatcher:SetScript("OnEvent", function(_, _, addonName)
         if addonName == "Blizzard_AchievementUI" then HookAchievementButtons() end
+        if addonName == "Blizzard_Collections" then HookPetJournal() end
     end)
     -- When a user opens achievements after this page was built, the click
     -- handler is then installed even when no achievement window existed yet.
@@ -445,8 +576,8 @@ end
 
 -- Every widget in the right-hand column. Refresh hides them all, then the
 -- flow shows the ones the current view needs.
-local DETAIL_WIDGETS = {"AddHeading", "Back", "MountSearchLabel", "MountSearch", "UseMount", "AddHint", "Input",
-    "UseAchievement", "SourceLabel", "SourceSelect", "Add", "Feedback", "Caution",
+local DETAIL_WIDGETS = {"AddHeading", "Back", "TargetLabel", "UseSelection", "AddHint", "Input",
+    "SourceLabel", "SourceSelect", "Add", "Feedback", "Caution",
     "TargetHeading", "Source", "TargetIcon", "TargetIconBorder", "Toggle", "Remove", "CancelRemove", "Complete",
     "CompletedNote", "CompletedSettings", "GoalLabel", "Goal", "Explain", "ModeLabel", "Mode", "EditCharacters",
     "ShowAll", "StatusHeading", "StatusText", "CharHeading", "UnknownToggle"}
@@ -457,29 +588,31 @@ local function DrawAddForm(width)
     Place(controls.Back, DETAIL_X + width - 120, 88)
     controls.Back:Show()
     flow:Put(controls.AddHeading, 20, 25)
-    flow:Put(controls.MountSearchLabel, 14, 9)
-    controls.MountSearch:SetWidth(width - 5)
-    flow:Put(controls.MountSearch, 26, 7, 5)
-    local matches = WBF.CollectionHunts.FindMounts(controls.MountSearch:GetText(), 6)
+    flow:Put(controls.TargetLabel, 14, 9)
+    controls.AddHint:SetText("Type a mount name and pick it below, Shift-click a bag item or Pet Journal pet, enter an item ID, or use what's selected in the Mount Journal, Pet Journal or Achievements window.")
+    flow:Text(controls.AddHint, 8)
+    controls.Input:SetWidth(width - 5)
+    flow:Put(controls.Input, 25, 6, 5)
+    local matches = Page.MountMatches()
     for i, b in ipairs(controls.MountResults) do
         local entry = matches[i]
         b.mount = entry
         if entry then
-            b:SetText((entry.collected and "[Owned] " or "") .. entry.name)
-            b:SetWidth(width)
+            b:SetText(entry.name)
+            b.Icon:SetTexture(entry.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+            b.Owned:SetShown(entry.collected == true)
+            b:SetWidth(width - 5)
             flow:Put(b, 27, 2)
         end
     end
     flow.y = flow.y + 6
-    flow:Put(controls.UseMount, 27, 14)
-    controls.AddHint:SetText("Or Shift-click a bag item or Pet Journal pet, enter an item ID, or use the selected achievement.")
-    flow:Text(controls.AddHint, 10)
-    controls.Input:SetWidth(width - 5)
-    flow:Put(controls.Input, 25, 12, 5)
-    flow:Put(controls.UseAchievement, 27, 18)
+    controls.UseSelection:SetWidth(width - 5)
+    flow:Put(controls.UseSelection, 27, 18)
     flow:Text(controls.SourceLabel, 6)
-    controls.SourceSelect:SetWidth(math.min(340, width))
+    controls.SourceSelect:SetWidth(width - 5)
     flow:Put(controls.SourceSelect, 28, 18)
+    controls.Add:SetWidth(width - 5)
+    controls.Add:SetEnabled((controls.Input:GetText() or ""):match("%S") ~= nil)
     flow:Put(controls.Add, 29, 14)
     flow:Text(controls.Feedback, 14)
     controls.Caution:SetText("The Mount Journal supplies names and collection status. Raid and boss data comes from the curated registry or your manual selection; unverified sources aren't guessed.")
@@ -498,6 +631,100 @@ local function DrawNoHunts(width)
     Place(empty, DETAIL_X, 101)
     empty:Show()
     return 101 + empty:Layout(width)
+end
+
+-- The target Add Hunt uses: a picked mount's ID while its name is still in
+-- the box, an exact mount name typed in full, or the box text as entered.
+function Page.ResolvedTarget()
+    local text = controls.Input and controls.Input:GetText() or ""
+    local picked = controls.Picked
+    if picked and text == picked.text then return picked.target end
+    if not WBF.CollectionHunts.TargetKind(text) then
+        local wanted = text:lower():gsub("^%s+", ""):gsub("%s+$", "")
+        for _, entry in ipairs(WBF.CollectionHunts.FindMounts(wanted, 50)) do
+            if entry.name:lower() == wanted then return "mount:" .. entry.id end
+        end
+    end
+    return text
+end
+
+-- Mount suggestions only while the box holds plain typed text.
+function Page.MountMatches()
+    local text = controls.Input and controls.Input:GetText() or ""
+    if controls.Picked and text == controls.Picked.text then return {} end
+    if text:find("|H", 1, true) or WBF.CollectionHunts.TargetKind(text) then return {} end
+    return WBF.CollectionHunts.FindMounts(text, 6)
+end
+
+local KIND_LABELS = { mount = "Mount", pet = "Pet", achievement = "Achievement", item = "Item" }
+
+-- Shows what the box holds, carries a recognised source over, and resets the
+-- owned-mount confirmation whenever the target changes.
+function Page.TargetChanged(userInput)
+    local text = controls.Input:GetText()
+    if controls.Picked and text ~= controls.Picked.text then controls.Picked = nil end
+    confirmedOwnedInput = nil
+    if controls.Add then controls.Add:SetText("Add Hunt") end
+    local target = Page.ResolvedTarget()
+    local kind, id = WBF.CollectionHunts.TargetKind(target)
+    local message = ""
+    if kind == "mount" then
+        local journal = WBF.CollectionHunts.Mount(id)
+        if journal and journal.collected == true then
+            message = "Already collected in your Mount Journal. You can still add this hunt if you want to."
+        elseif journal then
+            message = "Mount: " .. journal.name
+        end
+    elseif kind then
+        local preview = WBF.CollectionHunts.Preview(target)
+        if preview and preview.collected == true then
+            message = "Already collected in your Mount Journal. You can still add this hunt if you want to."
+        else
+            local name = text:match("|h%[(.-)%]|h")
+            if name then
+                message = KIND_LABELS[kind] .. ": " .. name
+            else
+                message = KIND_LABELS[kind] .. " ID " .. id
+            end
+        end
+    end
+    local sourceKey = kind == "mount" and WBF.CollectionHunts.MountSourceKey and WBF.CollectionHunts.MountSourceKey(id)
+        or WBF.CollectionHunts.KnownSource(target)
+    local journalKey, journalLines
+    if kind and WBF.CollectionHunts.JournalSource then
+        journalKey, journalLines = WBF.CollectionHunts.JournalSource(kind, id)
+    end
+    sourceKey = sourceKey or journalKey
+    if journalLines and #journalLines > 0 then
+        local parts = {}
+        for _, line in ipairs(journalLines) do
+            parts[#parts + 1] = line.label and (line.label .. ": " .. line.value) or line.value
+        end
+        local notes = { message ~= "" and message or nil }
+        notes[#notes + 1] = MUTED .. "Journal: " .. table.concat(parts, ", ") .. "|r"
+        if sourceKey then
+            notes[#notes + 1] = SUCCESS .. "Source chosen automatically. Check it before adding.|r"
+        else
+            notes[#notes + 1] = WARNING .. "This source isn't supported yet. Choose one below if it fits.|r"
+        end
+        message = table.concat(notes, "\n")
+    end
+    if controls.Feedback then controls.Feedback:SetText(message) end
+    if controls.Add then controls.Add:SetEnabled(text:match("%S") ~= nil) end
+    -- A new target never inherits the previous target's source. A source the
+    -- player chose by hand stays while the target itself is unchanged.
+    local identity = kind and (kind .. ":" .. id) or nil
+    local targetChanged = identity ~= controls.LastTarget
+    controls.LastTarget = identity
+    if sourceKey and controls.SourceSelect then
+        controls.SourceKey = sourceKey
+        local source = WBF.CollectionHunts.Source(sourceKey)
+        SetDropdown(controls.SourceSelect, source.instance .. " - " .. source.boss)
+    elseif targetChanged and controls.SourceSelect then
+        controls.SourceKey = nil
+        SetDropdown(controls.SourceSelect, "Choose raid / boss")
+    end
+    if userInput then Page.Refresh() end
 end
 
 function Page.Refresh()
@@ -640,7 +867,7 @@ function Page.Refresh()
 
     flow:Put(controls.GoalLabel, 14, 6)
     controls.Goal:SetEnabled(info.defaultGoal~="mount")
-    controls.Goal:SetText((settings.goal or "item"):gsub("^%l",string.upper).."  v")
+    SetDropdown(controls.Goal, ((settings.goal or "item"):gsub("^%l",string.upper)))
     flow:Put(controls.Goal, 28, 8)
     controls.Explain:SetText(finished and
         (completionMethod == "manual" and "Marked complete manually. Reopen if needed." or "Collection goal confirmed by WoW. No further runs required.") or
@@ -651,7 +878,7 @@ function Page.Refresh()
         "Eligibility is unverified for this goal unless WarbandFYI has an explicit rule.")
     flow:Text(controls.Explain, 18)
     flow:Put(controls.ModeLabel, 14, 6)
-    controls.Mode:SetText((settings.characterMode=="selected" and "Selected characters" or "All eligible characters").."  v")
+    SetDropdown(controls.Mode, settings.characterMode=="selected" and "Selected characters" or "All eligible characters")
     flow:Put(controls.Mode, 28, 8)
     controls.EditCharacters:SetText(editingCharacters and "Done editing characters" or "Edit farming characters")
     controls.ShowAll:SetText(showAllCharacters and "Show relevant only" or "Show all characters")

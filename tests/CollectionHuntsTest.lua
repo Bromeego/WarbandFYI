@@ -125,7 +125,10 @@ C_PetJournal = {
         if itemID == 70000 then return "Arfus", 1, 2, nil, nil, nil, nil, nil, nil, nil, nil, nil, 4321 end
     end,
     GetPetInfoBySpeciesID = function(speciesID)
-        if speciesID == 4321 then return "Arfus", 12345 end
+        if speciesID == 4321 then
+            return "Arfus", 12345, 4, nil, "|cFFFFD200Drop:|r Headless Horseman|n|cFFFFD200Zone:|r Scarlet Monastery"
+        end
+        if speciesID == 99 then return "Lost Kitten", 1, 1, nil, "|cFFFFD200Vendor:|r Breanni|n|cFFFFD200Zone:|r Dalaran" end
     end,
     GetNumCollectedInfo = function() return petsOwned, 3 end,
 }
@@ -157,6 +160,20 @@ hallowsEnd = true
 petsOwned = 1
 check("owning the pet completes the hunt", WBF.CollectionHunts.Status(arfus, "A") == "collected")
 petsOwned = 0
+
+-- Journal source text picks a curated source.
+local Hunts = WBF.CollectionHunts
+local lines = Hunts.SourceLines("|cFFFFD200Drop:|r Headless Horseman|n|cFFFFD200Zone:|r Scarlet Monastery")
+check("source text splits into labelled lines", #lines == 2 and lines[1].label == "Drop" and lines[1].value == "Headless Horseman"
+    and lines[2].label == "Zone" and lines[2].value == "Scarlet Monastery")
+check("a pet's Journal source picks the Headless Horseman", (Hunts.JournalSource("pet", 4321)) == "headless")
+check("a pet cage item reads its pet's source", (Hunts.JournalSource("item", 70000)) == "headless")
+local key, vendorLines = Hunts.JournalSource("pet", 99)
+check("an uncurated source is reported, not guessed", key == nil and #vendorLines == 2 and vendorLines[1].value == "Breanni")
+check("a boss and its instance pick that source", (Hunts.SourceFromText("Drop: Onyxia\nZone: Onyxia's Lair")) == "onyxian")
+check("a boss name with odd punctuation still matches", (Hunts.SourceFromText("Drop: Al'Akir")) == "southwind")
+check("a zone alone does not pick a boss", Hunts.SourceFromText("Zone: Icecrown Citadel") == nil)
+check("no source text gives nothing", Hunts.JournalSource("pet", 12) == nil)
 
 reset()
 check("hunter is not a hunt command", WBF.CollectionHunts.Slash("hunter") == false)
