@@ -4,6 +4,10 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 
 ## Unreleased
 
+### Fixed
+
+- The one-time clean-up of saved currency history now runs. It removes brief false dips, where a balance read low for a moment and bounced straight back, from Resources graphs and activity. A mistake meant it had never run outside the tests.
+
 ## 0.2.0-dev.2h — 2026-10-31
 
 ### Changed
