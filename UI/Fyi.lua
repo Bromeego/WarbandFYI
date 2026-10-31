@@ -394,7 +394,7 @@ local function EnsurePopup()
     popupHunts:SetScript("OnEnter", function(owner)
         GameTooltip:SetOwner(owner, "ANCHOR_TOP")
         GameTooltip:SetText("Collection Hunts", 1, 0.82, 0.45)
-        WBF.UI.AddTip(GameTooltip, "Add the characters that can make an attempt at each hunt right now.", WBF.UI.Colors.tipText, true)
+        WBF.UI.AddTip(GameTooltip, "Show the Collection Hunts this character can make an attempt at right now.", WBF.UI.Colors.tipText, true)
         GameTooltip:Show()
     end)
     popupHunts:SetScript("OnLeave", function()
@@ -762,7 +762,7 @@ local function RenderPopup(group, preserveScroll)
                 local padding = info and info.indent and 2 or 6
                 local lineHeight = math.max(minHeight, math.ceil((line.Text:GetStringHeight() or 0) + padding))
                 line:SetHeight(lineHeight)
-                Color(line.Text, info and info.completed and WBF.UI.Colors.muted or WBF.UI.Colors.cream)
+                Color(line.Text, info and (info.completed or info.muted) and WBF.UI.Colors.muted or WBF.UI.Colors.cream)
                 line.pageId = entry.pageId
                 line.sectionId = entry.sectionId
                 line.blockId = info and info.blockId or nil

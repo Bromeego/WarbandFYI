@@ -207,11 +207,18 @@ GetSavedInstanceInfo = function() end
 WBF.CollectionHunts.Sync()
 snapshot("B", now - 4 * DAY)
 snapshot("C", now - 1 * DAY - 60, killed(now + 2 * DAY))
+local available = WBF.CollectionHunts.AvailableCharacters(drake)
+check("this character comes first among those that can go", #available == 2 and available[1].name == "Mira"
+    and available[1].current and available[2].name == "Taxableyawl")
 local entry = WBF.CollectionHunts.LoginEntry()
 local line = entry and entry.lines[1]
-check("the hunt FYI lists the drake", line and line.text == WBF.CollectionHunts.Catalog()[drake].title, line and line.text)
-check("the hunt FYI names this character first, then alts that can go",
-    line and line.detail == "Throne of the Four Winds - Al'Akir: Mira (you), Taxableyawl", line and line.detail)
+check("the hunt FYI lists the drake", line and line.text == WBF.CollectionHunts.Catalog()[drake].title and line.icon, line and line.text)
+check("the hunt FYI says where, without listing alts", entry and entry.lines[2].text == "Throne of the Four Winds - Al'Akir"
+    and entry.lines[2].indent and entry.title == "You can make an attempt", entry and entry.lines[2] and entry.lines[2].text)
+local guidBefore = WBF.Characters.GetGuid
+WBF.Characters.GetGuid = function() return "C" end
+check("no hunt FYI when this character has nothing to attempt", WBF.CollectionHunts.LoginEntry() == nil)
+WBF.Characters.GetGuid = guidBefore
 WBF.Characters.List = listBefore
 
 -- Journal source text picks a curated source.

@@ -844,13 +844,13 @@ function WBF.NotebookFyi.HuntsOffered()
     return Hunts and Hunts.Active and #Hunts.Active() > 0 or false
 end
 
--- Shows which characters can attempt each hunt now: in the popup on screen,
+-- Shows the hunts this character can attempt now: in the popup on screen,
 -- or in a popup of its own. Says so in chat when nothing is available.
 function WBF.NotebookFyi.ShowHunts()
     local Fyi = WBF.UI and WBF.UI.Fyi
     if not (Fyi and Fyi.Show) then return false end
     if not HuntsCard() then
-        print("|cffd4af37WarbandFYI|r No character can make a Collection Hunt attempt right now.")
+        print("|cffd4af37WarbandFYI|r This character has no Collection Hunt attempts available right now. The Collection Hunts page shows your other characters.")
         return false
     end
     if Fyi.IsShown and Fyi.IsShown() and Fyi.Attach then

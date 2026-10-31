@@ -856,25 +856,37 @@ function Hunts.AvailableCharacters(key)
     return names
 end
 
--- One FYI line per active hunt with every character that can attempt it now.
+function Hunts.Icon(info)
+    if type(info) ~= "table" then return nil end
+    return info.mountIcon or (info.itemID and C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(info.itemID))
+        or (info.itemID and GetItemIcon and GetItemIcon(info.itemID))
+        or (info.achievementID and GetAchievementInfo and select(10, GetAchievementInfo(info.achievementID)))
+        or (info.petSpeciesID and C_PetJournal and C_PetJournal.GetPetInfoBySpeciesID
+            and select(2, C_PetJournal.GetPetInfoBySpeciesID(info.petSpeciesID)))
+        or nil
+end
+
+-- A short nudge for the character being played: each hunt it can make an
+-- attempt at right now, and where. Alts stay on the Collection Hunts page.
 function Hunts.LoginEntry()
     if not scanReady then return nil end
+    local guid = WBF.Characters and WBF.Characters.GetGuid and WBF.Characters.GetGuid()
+    if not guid then return nil end
     local lines = {}
     for _, hunt in ipairs(Hunts.Active()) do
-        local ready = Hunts.AvailableCharacters(hunt.key)
-        if #ready > 0 then
-            local source = hunt.info.sourceKey and sourceRegistry[hunt.info.sourceKey]
-            local where = source and source.daily and (hunt.info.boss .. " daily bag")
-                or (hunt.info.instance .. " - " .. hunt.info.boss)
-            local names = {}
-            for index, entry in ipairs(ready) do
-                names[index] = entry.current and (entry.name .. " (you)") or entry.name
-            end
-            lines[#lines + 1] = { text = hunt.info.title, detail = where .. ": " .. table.concat(names, ", ") }
+        if Hunts.Status(hunt.key, guid) == "available" then
+            local info = hunt.info
+            local source = info.sourceKey and sourceRegistry[info.sourceKey]
+            local where = source and source.daily and (info.boss .. " daily bag")
+                or (info.instance .. " - " .. info.boss)
+            lines[#lines + 1] = { text = info.title, icon = Hunts.Icon(info) or "Interface\\Icons\\INV_Misc_QuestionMark" }
+            lines[#lines + 1] = { text = where, indent = true, muted = true }
         end
     end
     if #lines == 0 then return nil end
-    return { title = "Available Collection Hunts", context = "Characters that can make an attempt",
+    local count = #lines / 2
+    return { context = "Collection Hunts",
+        title = count == 1 and "You can make an attempt" or ("You can make " .. count .. " attempts"),
         lines = lines, triggerType = "LOGIN", attachKey = "hunts", openHunts = true }
 end
 
@@ -943,7 +955,7 @@ function Hunts.Slash(raw)
         if WBF.NotebookFyi and WBF.NotebookFyi.ShowHunts then WBF.NotebookFyi.ShowHunts() end
     else
         Say("Collection Hunts commands:")
-        Say("/wbfyi hunt fyi  - show which characters can make an attempt now")
+        Say("/wbfyi hunt fyi  - show the hunts this character can attempt now")
         Say("/wbfyi hunt add|remove <thoridal|onyxian|southwind>")
         Say("/wbfyi hunt goal <key> achievement|appearance|item|mount|pet")
         Say("/wbfyi hunt chars <key> all|selected")
