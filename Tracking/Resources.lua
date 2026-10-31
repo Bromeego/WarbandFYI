@@ -1052,8 +1052,13 @@ function WBF.Resources.ActiveInstance(eventKey)
     return active[eventKey]
 end
 
-local function Claim(key, balance, delta, classification)
+-- atTime is the stamp of a dated record, such as a transfer-log entry. Two
+-- entries of the same amount are separate moves even when read together.
+local function Claim(key, balance, delta, classification, atTime)
     local id = tostring(key) .. ":" .. tostring(balance) .. ":" .. tostring(delta) .. ":" .. tostring(classification)
+    if type(atTime) == "number" then
+        id = id .. ":" .. tostring(atTime)
+    end
     local now = WBF.Time.Now()
     local previous = recentClaims[id]
     if previous and (now - previous) < 3 then
@@ -1186,7 +1191,7 @@ local function Record(definition, delta, balanceAfter, classification, previous,
     if classification ~= BASELINE and (not delta or delta == 0) then
         return nil
     end
-    if not Claim(definition.key, balanceAfter, delta or 0, classification) then
+    if not Claim(definition.key, balanceAfter, delta or 0, classification, atTime) then
         return nil
     end
     local instance = definition.eventKey and active[definition.eventKey] or nil
@@ -3197,14 +3202,33 @@ local function CopyAmounts(state)
     return copy
 end
 
-local function RecentTransferCovers(key, guid, delta)
+-- Transfer-log stamps are server time and live records use this PC's clock.
+local TRANSFER_CLOCK_SLACK = 3600
+
+-- An existing transfer row only stands for a move it could have recorded: one
+-- stamped no earlier than notBefore. With claimId, the earliest unclaimed row
+-- is claimed for that transfer-log entry, so it cannot also stand for another
+-- transfer of the same amount between the same characters.
+local function RecentTransferCovers(key, guid, delta, notBefore, claimId)
     local events = WBF.Database.Get().events or {}
+    local found
     for index = #events, 1, -1 do
         local event = events[index]
         local meta = event.meta or {}
-        if event.eventType == WBF.EventType.Resource and meta.resourceKey == key and meta.classification == TRANSFER and event.guid == guid and event.delta == delta then
-            return true
+        if event.eventType == WBF.EventType.Resource and meta.resourceKey == key and meta.classification == TRANSFER and event.guid == guid and event.delta == delta
+            and (not notBefore or (type(event.at) == "number" and event.at >= notBefore)) then
+            if not claimId then
+                return true
+            end
+            if meta.transferLogId == nil and (not found or (event.at or 0) < (found.at or 0)) then
+                found = event
+            end
         end
+    end
+    if found then
+        found.meta = found.meta or {}
+        found.meta.transferLogId = claimId
+        return true
     end
     return false
 end
@@ -3377,6 +3401,10 @@ local function ApplyAuthoritative(definition, rows)
     end
     local previous = CopyAmounts(state)
     local hadAny = next(previous) ~= nil or state.baselined
+    -- A shift between two account reads can only be covered by a transfer
+    -- recorded since the earlier read, not by an older one of the same size.
+    local lastAuthorityAt = type(state.authority) == "table" and WBF.Format.AsNumber(state.authority.at) or nil
+    local coverFrom = lastAuthorityAt and (lastAuthorityAt - TRANSFER_CLOCK_SLACK) or nil
     for guid, amount in pairs(nextAmounts) do
         state.characters[guid] = amount
         TouchScan(state, guid, "blizzard_account_data")
@@ -3401,7 +3429,7 @@ local function ApplyAuthoritative(definition, rows)
         if (shift.classification == GAIN_OBSERVED or shift.classification == LOSS_OBSERVED or shift.classification == GAIN or shift.classification == SPEND) and (HasUnmatchedOpposite(definition.key, shift.delta) or ReclassifyOpposite(definition.key, shift.delta, shift.guid)) then
             shift.classification = TRANSFER
         end
-        local covered = shift.classification ~= SYNC and RecentTransferCovers(definition.key, shift.guid, shift.delta)
+        local covered = shift.classification ~= SYNC and RecentTransferCovers(definition.key, shift.guid, shift.delta, coverFrom)
         if not covered then
             local counterpart
             if shift.classification == TRANSFER then
@@ -3456,14 +3484,27 @@ local function IngestTransferLog()
                 local started = balance.baselinedAt
                 if started and stamp >= started - 120 and stamp >= cutoff then
                     store.transferSeen[id] = stamp
-                    local already = RecentTransferCovers(definition.key, txn.sourceCharacterGUID, -qty)
-                        or RecentTransferCovers(definition.key, txn.destinationCharacterGUID, qty)
-                    if not already then
+                    -- Each side is matched on its own: a live record of the
+                    -- sending side says nothing about the receiving side.
+                    local notBefore = stamp - TRANSFER_CLOCK_SLACK
+                    local sent = RecentTransferCovers(definition.key, txn.sourceCharacterGUID, -qty, notBefore, id)
+                    local received = RecentTransferCovers(definition.key, txn.destinationCharacterGUID, qty, notBefore, id)
+                    if not sent or not received then
                         local total = TotalOf(balance, definition)
                         RememberCharacterName(balance, txn.sourceCharacterGUID, txn.sourceCharacterName)
                         RememberCharacterName(balance, txn.destinationCharacterGUID, txn.destinationCharacterName)
-                        Record(definition, -qty, total, TRANSFER, nil, txn.sourceCharacterGUID, nil, txn.destinationCharacterName, stamp)
-                        Record(definition, qty, total, TRANSFER, nil, txn.destinationCharacterGUID, nil, txn.sourceCharacterName, stamp)
+                        if not sent then
+                            local event = Record(definition, -qty, total, TRANSFER, nil, txn.sourceCharacterGUID, nil, txn.destinationCharacterName, stamp)
+                            if event and type(event.meta) == "table" then
+                                event.meta.transferLogId = id
+                            end
+                        end
+                        if not received then
+                            local event = Record(definition, qty, total, TRANSFER, nil, txn.destinationCharacterGUID, nil, txn.sourceCharacterName, stamp)
+                            if event and type(event.meta) == "table" then
+                                event.meta.transferLogId = id
+                            end
+                        end
                     end
                 end
             end
