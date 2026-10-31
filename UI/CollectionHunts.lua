@@ -335,11 +335,15 @@ local function Build(parent)
     divider:SetColorTexture(WBF.UI.Colors.line[1], WBF.UI.Colors.line[2], WBF.UI.Colors.line[3], WBF.UI.Colors.line[4])
     divider:SetPoint("TOPLEFT",278,-75)
     divider:SetSize(1,670)
+    local FillInput
     local function InsertLink(link)
         -- Bag/item links may pass through HandleModifiedItemClick without ever
         -- reaching ChatEdit_InsertLink (particularly when chat is closed).
         -- Do not steal links unless the user is editing this field on this page.
         if not (root and root:IsVisible() and controls.Input and controls.Input:HasFocus()) then return end
+        FillInput(link)
+    end
+    function FillInput(link)
         if type(link) ~= "string" then return end
         -- Pet Journal Shift-clicks arrive as battlepet links.
         if not (link:find("|Hitem:", 1, true) or link:find("|Hachievement:", 1, true) or link:find("|Hbattlepet:", 1, true)
@@ -388,9 +392,24 @@ local function Build(parent)
         end
         return string.format("|cffffd200|Hbattlepet:%d:1:0:0:0:0:0000000000000000|h[%s]|h|r", speciesID, name or ("Pet #" .. speciesID))
     end
+    -- Clicking around the Pet Journal can take focus from the hunt box, and an
+    -- uncollected pet has no chat link to compete with. Take the pet whenever
+    -- the Add Hunt box is on screen, unless the player is typing in chat.
+    local function ChatOpen()
+        local active = (ChatFrameUtil and ChatFrameUtil.GetActiveWindow and WBF.Format.SafeCall(ChatFrameUtil.GetActiveWindow))
+            or (ChatEdit_GetActiveWindow and WBF.Format.SafeCall(ChatEdit_GetActiveWindow))
+        return active ~= nil and active ~= false
+    end
     local function TakePetClick(button)
-        if not (root and root:IsVisible() and controls.Input and controls.Input:HasFocus()) then return end
         if not (IsShiftKeyDown and IsShiftKeyDown()) then return end
+        if not (root and root:IsVisible() and controls.Input and controls.Input:IsVisible()) then
+            if WBF.Debug then WBF.Debug.Log("Pet Shift-click ignored: Add Hunt box not on screen.") end
+            return
+        end
+        if not controls.Input:HasFocus() and ChatOpen() then
+            if WBF.Debug then WBF.Debug.Log("Pet Shift-click left for chat: chat box is open.") end
+            return
+        end
         if type(button) ~= "table" then return end
         -- The icon is a child button (dragButton on list rows, PetInfo on the
         -- card) that keeps the pet on its parent.
@@ -407,7 +426,11 @@ local function Build(parent)
             speciesID = WBF.Format.AsNumber((WBF.Format.SafeCall(C_PetJournal.GetPetInfoByPetID, petID)))
         end
         local link = PetLink(speciesID, petID)
-        if link then InsertLink(link) end
+        if WBF.Debug then WBF.Debug.Log("Pet Shift-click: species", tostring(speciesID), "petID", tostring(petID), link and "linked" or "no link") end
+        if link then
+            FillInput(link)
+            controls.Input:SetFocus()
+        end
     end
     local petHooked = {}
     local function HookPetButton(button)
@@ -423,6 +446,7 @@ local function Build(parent)
         if petListHooked or not PetJournal then return end
         petListHooked = true
         HookPetButton(PetJournalPetCard)
+        HookPetButton(PetJournalPetCardPetInfo)
         local scrollBox = PetJournal.ScrollBox
         if scrollBox then
             if scrollBox.ForEachFrame then

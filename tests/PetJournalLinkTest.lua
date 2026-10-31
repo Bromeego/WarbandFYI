@@ -65,7 +65,11 @@ local function fire(name, ...)
     for _, fn in ipairs(globalHooks[name] or {}) do fn(...) end
 end
 HandleModifiedItemClick = function() end
-ChatFrameUtil = { InsertLink = function() end }
+chatOpen = false
+ChatFrameUtil = {
+    InsertLink = function() end,
+    GetActiveWindow = function() return chatOpen and {} or nil end,
+}
 
 local PETS = { [4321] = "Arfus", [55] = "Corefire Imp" }
 C_PetJournal = {
@@ -181,8 +185,20 @@ check("a plain click does not fill the box", input.text == "", input.text)
 shift = true
 focused = false
 existingButton:Click()
-check("an unfocused box is left alone", input.text == "", input.text)
+check("an unfocused box still takes the pet", speciesIn(input.text) == 4321, input.text)
+
+input:SetText("")
+chatOpen = true
+existingButton:Click()
+check("an unfocused box leaves the pet to an open chat box", input.text == "", input.text)
+chatOpen = false
 focused = true
+
+input:SetText("")
+input.shown = false
+existingButton:Click()
+check("a hidden hunt box is left alone", input.text == "", input.text)
+input.shown = true
 
 if failures > 0 then
     print(failures .. " pet journal link test(s) failed")
