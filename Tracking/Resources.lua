@@ -461,8 +461,10 @@ local function LoadWatched()
     if WBF.Resources.MigrateOwnedBalances then
         WBF.Resources.MigrateOwnedBalances()
     end
-    if RepairHistory then
-        RepairHistory(false)
+    -- The local RepairHistory is declared further down, so it is out of scope
+    -- here. The public wrapper is defined by the time LoadWatched runs.
+    if WBF.Resources.RepairHistory then
+        WBF.Resources.RepairHistory(false)
     end
 end
 

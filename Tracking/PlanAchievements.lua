@@ -555,8 +555,8 @@ function WBF.PlanAchievements.Register(bus)
         end
         nextCriteriaRefresh = now + 1
         WBF.PlanAchievements.InvalidateProgress()
-        if WBF.Notebook.RefreshOpen then
-            WBF.Notebook.RefreshOpen()
+        if WBF.Notebook.RequestRefreshOpen then
+            WBF.Notebook.RequestRefreshOpen()
         end
     end)
 
@@ -569,8 +569,8 @@ function WBF.PlanAchievements.Register(bus)
     bus:On("ACHIEVEMENT_EARNED", function(achievementID)
         achievementID = tonumber(achievementID)
         WBF.PlanAchievements.InvalidateProgress()
-        if achievementID and WBF.Notebook and WBF.Notebook.FindAchievement(achievementID) and WBF.Notebook.RefreshOpen then
-            WBF.Notebook.RefreshOpen()
+        if achievementID and WBF.Notebook and WBF.Notebook.FindAchievement(achievementID) and WBF.Notebook.RequestRefreshOpen then
+            WBF.Notebook.RequestRefreshOpen()
         end
     end)
 end
