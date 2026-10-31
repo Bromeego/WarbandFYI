@@ -4,6 +4,10 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 
 ## Unreleased
 
+### Fixed
+
+- FYI popups no longer replace each other. When login, event and zone reminders arrive together, each opens in turn as you close the one before. Login reminders that come due during combat now open when combat ends instead of being skipped.
+
 ## 0.2.0-dev.2g — 2026-10-30
 
 ### Changed

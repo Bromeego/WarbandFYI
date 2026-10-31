@@ -252,6 +252,12 @@ local function EnsurePopup()
     popup:SetScript("OnHide", function()
         CloseRowMenu()
         popupCountdownGeneration = popupCountdownGeneration + 1
+        -- A short pause so the next queued FYI reads as a new popup.
+        if C_Timer and C_Timer.After then
+            C_Timer.After(0.5, function() WBF.UI.Fyi.ShowQueued() end)
+        else
+            WBF.UI.Fyi.ShowQueued()
+        end
     end)
     WBF.UI.Paint(popup, WBF.UI.Colors.window, WBF.UI.Colors.windowBorder, 1)
 
@@ -831,12 +837,51 @@ function WBF.UI.Fyi.ResetPopupPosition()
     end
 end
 
+-- There is one popup. A group that arrives while a different FYI is on screen,
+-- or during combat, waits here instead of replacing it: callers mark their
+-- reminders as shown, so a replaced group would not come back this session.
+local queued = {}
+
+local function SameContext(contextType, zoneMapID, group)
+    if contextType ~= group.contextType then
+        return false
+    end
+    return contextType ~= "ZONE" or zoneMapID == group.zoneMapID
+end
+
+local function Enqueue(group)
+    for index = 1, #queued do
+        if SameContext(queued[index].contextType, queued[index].zoneMapID, group) then
+            queued[index] = group
+            return
+        end
+    end
+    queued[#queued + 1] = group
+end
+
+-- Zone and event groups can go stale while they wait.
+local function Current(group)
+    if group.contextType == "ZONE" then
+        local zone = WBF.NotebookFyi and WBF.NotebookFyi.VisitZone and WBF.NotebookFyi.VisitZone()
+        return zone == group.zoneMapID and group or nil
+    end
+    if group.contextType == "WOW_EVENT" then
+        return WBF.NotebookFyi and WBF.NotebookFyi.ActiveEventGroup and WBF.NotebookFyi.ActiveEventGroup(false) or nil
+    end
+    return group
+end
+
 function WBF.UI.Fyi.Show(group)
     if type(group) ~= "table" or type(group.entries) ~= "table" or #group.entries == 0 then
         return false
     end
     if InCombatLockdown and InCombatLockdown() then
+        Enqueue(group)
         return false
+    end
+    if popup and popup:IsShown() and not SameContext(popup.contextType, popup.zoneMapID, group) then
+        Enqueue(group)
+        return true
     end
     RenderPopup(group, false)
     popup:Show()
@@ -846,6 +891,18 @@ function WBF.UI.Fyi.Show(group)
     return true
 end
 
+function WBF.UI.Fyi.ShowQueued()
+    if (popup and popup:IsShown()) or (InCombatLockdown and InCombatLockdown()) then
+        return false
+    end
+    while #queued > 0 do
+        local group = Current(table.remove(queued, 1))
+        if group and WBF.UI.Fyi.Show(group) then
+            return true
+        end
+    end
+    return false
+end
 
 function WBF.UI.Fyi.SyncActiveEvents()
     if not popup or not popup:IsShown() or popup.contextType ~= "WOW_EVENT" then

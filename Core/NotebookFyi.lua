@@ -806,7 +806,7 @@ end
 
 function WBF.NotebookFyi.ShowLoginFYIs()
     if not WBF.NotebookFyi.Enabled() then return end
-    if type(InCombatLockdown) == "function" and InCombatLockdown() then return end
+    -- In combat the popup queues this group and opens it once combat ends.
     local fyi = WBF.NotebookFyi.Ensure()
     if not fyi then return end
     local entries, ids = {}, {}
@@ -1430,6 +1430,9 @@ end
 function WBF.NotebookFyi.OnRegen()
     Deliver(WBF.NotebookFyi.Flush())
     WBF.NotebookFyi.OnEventsChanged()
+    if WBF.UI and WBF.UI.Fyi and WBF.UI.Fyi.ShowQueued then
+        WBF.UI.Fyi.ShowQueued()
+    end
 end
 
 function WBF.NotebookFyi.Register(bus)
