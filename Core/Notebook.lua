@@ -38,11 +38,25 @@ local function Say(text)
     print("|cffd4af37WarbandFYI|r " .. text)
 end
 
+-- EnsureNotebook walks and repairs every page, section and block, so it runs
+-- once per notebook table rather than on every read. Every write in this file
+-- keeps the maps and order lists in step, so a repaired notebook stays valid.
+local ensuredNotebook = nil
+
 function WBF.Notebook.Root()
     if not WBF.Database or not WBF.Database.Get then
         return nil
     end
-    return WBF.Database.EnsureNotebook(WBF.Database.Get())
+    local db = WBF.Database.Get()
+    local notebook = type(db) == "table" and db.notebook or nil
+    if notebook ~= nil and notebook == ensuredNotebook and type(notebook.pages) == "table"
+        and type(notebook.sections) == "table" and type(notebook.blocks) == "table"
+        and type(notebook.quickNotes) == "table" and type(notebook.pageOrder) == "table"
+        and type(notebook.quickNoteOrder) == "table" then
+        return notebook
+    end
+    ensuredNotebook = WBF.Database.EnsureNotebook(db)
+    return ensuredNotebook
 end
 
 function WBF.Notebook.RefreshOpen()

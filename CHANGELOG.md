@@ -10,6 +10,10 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 - The selected hunt in the list is highlighted, and hunt icons no longer disappear behind the button.
 - Empty pages now explain what will show up and how to get started: Activity, the Dashboard, detail pages, Pet Battles and Collection Hunts with no hunts.
 
+### Fixed
+
+- FYI popups no longer replace each other. When login, event and zone reminders arrive together, each opens in turn as you close the one before. Login reminders that come due during combat now open when combat ends instead of being skipped.
+
 ## 0.2.0-dev.2g — 2026-10-30
 
 ### Changed
@@ -75,6 +79,9 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 - An unavailable starting level no longer produces an assumed one-level gain.
 
 ### Changed
+
+- Notebook reads no longer re-check the whole notebook on every call. Listing 20 pages with 300 blocks went from about 1.6 seconds to under a millisecond in testing, so large notebooks stay responsive.
+- Dashboard currency tiles read the event log once per refresh instead of once per tracked resource, cutting a full-log week refresh from roughly 100–300 ms to under 30 ms in testing.
 
 - Balance History and Net Gold History draw a smooth, anti-aliased line with a soft glow and a gradient fill. Observation dots appear on hover; only the latest point stays marked.
 
