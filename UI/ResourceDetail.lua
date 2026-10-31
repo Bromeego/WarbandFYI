@@ -17,14 +17,7 @@ local function Color(fontString, color)
     fontString:SetTextColor(color[1], color[2], color[3], color[4] or 1)
 end
 
-local function FontSize(fontString, object, size)
-    local font = object and object:GetFont()
-    if font and size then
-        fontString:SetFont(font, size, "")
-    end
-    fontString:SetShadowColor(0, 0, 0, 0.85)
-    fontString:SetShadowOffset(1, -1)
-end
+local FontSize = WBF.UI.SetFontSize
 
 local function AmountColor(amount)
     if amount > 0 then
@@ -119,9 +112,9 @@ local function FillMetrics(card, rows, top)
                 slot.value:SetWidth(88)
                 slot.value:SetText(row.value or "")
                 if row.big then
-                    FontSize(slot.value, GameFontNormalLarge, 16)
+                    FontSize(slot.value, GameFontNormalLarge, "value")
                 else
-                    FontSize(slot.value, GameFontHighlightSmall, 12)
+                    FontSize(slot.value, GameFontHighlightSmall, "small")
                 end
                 Color(slot.value, row.color or WBF.UI.Colors.cream)
                 slot.value:Show()
@@ -614,18 +607,18 @@ local function DrawHistory(plot, model, plotWidth, plotHeight)
             if GameTooltip.ClearLines then
                 GameTooltip:ClearLines()
             end
-            GameTooltip:AddLine(WBF.Format.ObservedAt(hovered.at), 1, 0.82, 0.45)
+            WBF.UI.AddTip(GameTooltip, WBF.Format.ObservedAt(hovered.at), WBF.UI.Colors.gold)
             GameTooltip:AddLine("Balance: " .. WBF.Format.Number(hovered.balance or 0), 1, 1, 1)
             if (self.stackCount or 1) > 1 then
-                GameTooltip:AddLine(tostring(self.stackCount) .. " changes at this time", 0.75, 0.75, 0.75)
+                WBF.UI.AddTip(GameTooltip, tostring(self.stackCount) .. " changes at this time", WBF.UI.Colors.tipDetail)
                 if self.stackDelta and self.stackDelta ~= 0 then
                     local color = AmountColor(self.stackDelta)
                     GameTooltip:AddLine("Net change: " .. WBF.Format.Signed(self.stackDelta), color[1], color[2], color[3])
                 end
             elseif self.stackOpening then
-                GameTooltip:AddLine("Tracking started", 0.75, 0.75, 0.75)
+                WBF.UI.AddTip(GameTooltip, "Tracking started", WBF.UI.Colors.tipDetail)
             elseif self.stackHeld then
-                GameTooltip:AddLine("Already held", 0.75, 0.75, 0.75)
+                WBF.UI.AddTip(GameTooltip, "Already held", WBF.UI.Colors.tipDetail)
             elseif hovered.delta and hovered.delta ~= 0 then
                 local color = AmountColor(hovered.delta)
                 GameTooltip:AddLine("Change: " .. WBF.Format.Signed(hovered.delta), color[1], color[2], color[3])
@@ -638,7 +631,7 @@ local function DrawHistory(plot, model, plotWidth, plotHeight)
                 GameTooltip:AddLine(hovered.name, r, g, b)
             end
             if hovered.note and hovered.note ~= "" then
-                GameTooltip:AddLine(hovered.note, 0.75, 0.75, 0.75, true)
+                WBF.UI.AddTip(GameTooltip, hovered.note, WBF.UI.Colors.tipDetail, true)
             end
             GameTooltip:Show()
         end)
@@ -699,7 +692,7 @@ function WBF.UI.ResourceDetail.Attach(parent)
     nameText:SetJustifyH("LEFT")
     nameText:SetWordWrap(false)
     Color(nameText, WBF.UI.Colors.cream)
-    FontSize(nameText, GameFontNormalLarge, 18)
+    FontSize(nameText, GameFontNormalLarge, "heading")
 
     chip = CreateFrame("Frame", nil, board, "BackdropTemplate")
     WBF.UI.Paint(chip, { 0.12, 0.09, 0.04, 0.95 }, WBF.UI.Colors.gold)
@@ -721,7 +714,7 @@ function WBF.UI.ResourceDetail.Attach(parent)
     backLabel:SetJustifyH("RIGHT")
     backLabel:SetJustifyV("MIDDLE")
     Color(backLabel, WBF.UI.Colors.gold)
-    FontSize(backLabel, GameFontHighlight, 14)
+    FontSize(backLabel, GameFontHighlight, "body")
     backButton:SetScript("OnClick", function()
         if WBF.UI.frame then
             WBF.UI.frame:BackDetail()
@@ -743,7 +736,7 @@ function WBF.UI.ResourceDetail.Attach(parent)
     balanceValue:SetPoint("TOPLEFT", 14, -40)
     balanceValue:SetJustifyH("LEFT")
     Color(balanceValue, WBF.UI.Colors.cream)
-    FontSize(balanceValue, GameFontNormalHuge, 32)
+    FontSize(balanceValue, GameFontNormalHuge, "hero")
     local balanceIcon = balanceCard:CreateTexture(nil, "ARTWORK")
     balanceIcon:SetSize(36, 36)
     balanceIcon:SetPoint("LEFT", balanceValue, "RIGHT", 10, -2)

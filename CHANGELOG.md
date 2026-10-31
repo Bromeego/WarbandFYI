@@ -6,6 +6,8 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 
 ### Changed
 
+- Close buttons on the main window, the Notebook sheet, the FYI popup and its windows, and the Settings copy dialog now match the WarbandFYI theme instead of Blizzard's red X.
+- Hover, selected and pressed states, row highlights and tooltip text use one consistent set of colours across every page, so the same kind of thing looks the same everywhere.
 - Less work while you play. When the Notebook or an FYI is open, bag, currency and achievement updates are now gathered into one redraw instead of redrawing the whole window for each one, and the redraw waits until combat ends. The quest log is read at most once a second while questing, and rare tracking no longer checks every health change of an ordinary target.
 
 ### Fixed

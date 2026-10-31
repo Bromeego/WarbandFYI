@@ -921,7 +921,7 @@ local function DrawCharacterFYIs(parent, y, width)
             button.Label = label
             local highlight = button:CreateTexture(nil, "HIGHLIGHT")
             highlight:SetAllPoints()
-            highlight:SetColorTexture(1, 1, 1, 0.06)
+            WBF.UI.SetColor(highlight, WBF.UI.Colors.highlight)
             return button
         end), parent)
         row:SetWidth(width)

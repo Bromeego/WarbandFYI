@@ -45,22 +45,26 @@ function WBF.UI.Navigation.LabelFor(view, monthOffset)
     return LABELS[view] or "WarbandFYI"
 end
 
+local function unpackColor(color)
+    return color[1], color[2], color[3], color[4] or 1
+end
+
 local function PaintNav(button)
     if button.selected then
         button.Background:SetColorTexture(WBF.UI.Colors.blue[1], WBF.UI.Colors.blue[2], WBF.UI.Colors.blue[3], 0.95)
         button.Bar:Show()
         button.Label:SetTextColor(WBF.UI.Colors.bright[1], WBF.UI.Colors.bright[2], WBF.UI.Colors.bright[3])
-        button.Icon:SetVertexColor(1, 0.9, 0.65)
+        button.Icon:SetVertexColor(unpackColor(WBF.UI.Colors.navIconActive))
     elseif button.hovered then
-        button.Background:SetColorTexture(1, 1, 1, 0.06)
+        WBF.UI.SetColor(button.Background, WBF.UI.Colors.highlight)
         button.Bar:Hide()
         button.Label:SetTextColor(WBF.UI.Colors.cream[1], WBF.UI.Colors.cream[2], WBF.UI.Colors.cream[3])
-        button.Icon:SetVertexColor(0.85, 0.85, 0.88)
+        button.Icon:SetVertexColor(unpackColor(WBF.UI.Colors.navIconHover))
     else
-        button.Background:SetColorTexture(0, 0, 0, 0)
+        WBF.UI.SetColor(button.Background, WBF.UI.Colors.clear)
         button.Bar:Hide()
-        button.Label:SetTextColor(0.72, 0.74, 0.78)
-        button.Icon:SetVertexColor(0.7, 0.72, 0.76)
+        WBF.UI.SetColor(button.Label, WBF.UI.Colors.navText)
+        button.Icon:SetVertexColor(unpackColor(WBF.UI.Colors.navIcon))
     end
 end
 

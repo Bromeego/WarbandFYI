@@ -70,7 +70,7 @@ local function PaintChoice(button, selected)
         button.Label:SetTextColor(WBF.UI.Colors.bright[1], WBF.UI.Colors.bright[2], WBF.UI.Colors.bright[3])
     else
         WBF.UI.Paint(button, WBF.UI.Colors.card, WBF.UI.Colors.goldDim)
-        button.Label:SetTextColor(0.78, 0.76, 0.68)
+        WBF.UI.SetColor(button.Label, WBF.UI.Colors.choiceText)
     end
 end
 
@@ -337,7 +337,7 @@ local function ApplyCard(frame, card, selected)
         frame.Badge:Hide()
     end
     if selected then
-        WBF.UI.Paint(frame, { 0.14, 0.11, 0.07, 0.98 }, WBF.UI.Colors.gold)
+        WBF.UI.Paint(frame, WBF.UI.Colors.cardPressed, WBF.UI.Colors.gold)
     else
         WBF.UI.Paint(frame, WBF.UI.Colors.card, WBF.UI.Colors.goldDim)
     end
@@ -597,7 +597,7 @@ local function RenderPanel(detail)
             local line = WBF.UI.Acquire(RowPool("resourceHolder", 18), panel)
             line:SetWidth(panel:GetWidth() - 24)
             line:SetPoint("TOPLEFT", panel, "TOPLEFT", 12, -y)
-            WBF.UI.Paint(line, { 0, 0, 0, 0 }, { 0, 0, 0, 0 })
+            WBF.UI.Paint(line, WBF.UI.Colors.clear, WBF.UI.Colors.clear)
             local r, g, b = WBF.Format.ClassColor(row.classFile)
             local when = row.bank and "" or ("   " .. ShortAgo(row.lastScanned))
             line.Text:SetText(row.name .. "    " .. WBF.Format.Number(row.amount) .. when)
@@ -669,7 +669,7 @@ local function RenderPanel(detail)
         local line = WBF.UI.Acquire(RowPool("resourceActivity", 16), panel)
         line:SetWidth(panel:GetWidth() - 24)
         line:SetPoint("TOPLEFT", panel, "TOPLEFT", 12, -y)
-        WBF.UI.Paint(line, { 0, 0, 0, 0 }, { 0, 0, 0, 0 })
+        WBF.UI.Paint(line, WBF.UI.Colors.clear, WBF.UI.Colors.clear)
         local delta = entry.delta or 0
         local color = MUTED
         if delta > 0 and entry.classification ~= "transfer" then
@@ -804,7 +804,7 @@ function WBF.UI.Resources.Attach(parent, sidePanel)
         local label = tag:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
         label:SetPoint("CENTER")
         tag.Label = label
-        WBF.UI.Paint(tag, { 0.08, 0.09, 0.12, 0.95 }, WBF.UI.Colors.goldDim)
+        WBF.UI.Paint(tag, WBF.UI.Colors.track, WBF.UI.Colors.goldDim)
         label:SetTextColor(WBF.UI.Colors.cream[1], WBF.UI.Colors.cream[2], WBF.UI.Colors.cream[3])
         tags[index] = tag
     end
@@ -972,7 +972,7 @@ function WBF.UI.Resources.Render(width)
     searchBox:ClearAllPoints()
     searchBox:SetPoint("TOPRIGHT", root, "TOPRIGHT", 0, -y)
     if not searchCursor then
-        WBF.UI.Paint(searchBox, { 0.03, 0.035, 0.05, 0.95 }, WBF.UI.Colors.goldDim)
+        WBF.UI.Paint(searchBox, WBF.UI.Colors.well, WBF.UI.Colors.goldDim)
     end
     y = y + 30
 
@@ -1087,7 +1087,7 @@ function WBF.UI.Resources.Render(width)
                     row.Holders:SetTextColor(cream[1], cream[2], cream[3])
                     row.Updated:SetTextColor(WBF.UI.Colors.muted[1], WBF.UI.Colors.muted[2], WBF.UI.Colors.muted[3])
                     if card.key == selected then
-                        WBF.UI.Paint(row, { 0.14, 0.11, 0.07, 0.98 }, WBF.UI.Colors.gold)
+                        WBF.UI.Paint(row, WBF.UI.Colors.cardPressed, WBF.UI.Colors.gold)
                     else
                         WBF.UI.Paint(row, WBF.UI.Colors.card, WBF.UI.Colors.goldDim)
                     end
@@ -1097,13 +1097,13 @@ function WBF.UI.Resources.Render(width)
                     row:SetScript("OnEnter", function(self)
                         ShowNativeTooltip(self, card.trackingType, card.id)
                         if card.key ~= selected then
-                            WBF.UI.Paint(self, { 0.11, 0.12, 0.15, 0.98 }, { 0.96, 0.84, 0.50, 0.95 })
+                            WBF.UI.Paint(self, WBF.UI.Colors.cardHover, WBF.UI.Colors.cardHoverEdge)
                         end
                     end)
                     row:SetScript("OnLeave", function(self)
                         HideTooltip()
                         if card.key == selected then
-                            WBF.UI.Paint(self, { 0.14, 0.11, 0.07, 0.98 }, WBF.UI.Colors.gold)
+                            WBF.UI.Paint(self, WBF.UI.Colors.cardPressed, WBF.UI.Colors.gold)
                         else
                             WBF.UI.Paint(self, WBF.UI.Colors.card, WBF.UI.Colors.goldDim)
                         end
@@ -1136,7 +1136,7 @@ function WBF.UI.Resources.Render(width)
                     end)
                     widget:SetScript("OnEnter", function(self)
                         if card.key ~= selected then
-                            WBF.UI.Paint(self, { 0.11, 0.12, 0.15, 0.98 }, { 0.96, 0.84, 0.50, 0.95 })
+                            WBF.UI.Paint(self, WBF.UI.Colors.cardHover, WBF.UI.Colors.cardHoverEdge)
                         end
                         ShowNativeTooltip(self, card.trackingType, card.id)
                     end)
