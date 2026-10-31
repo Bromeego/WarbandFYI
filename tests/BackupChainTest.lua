@@ -34,7 +34,7 @@ local now = 1790000000
 local function loadAddon(target)
     local WBF = {}
     local function run(path, source)
-        local chunk = assert(loadstring(source or readFile(path), "@" .. path))
+        local chunk = assert((loadstring or load)(source or readFile(path), "@" .. path))
         chunk("WarbandFYI", WBF)
     end
     run("Utils/Format.lua")

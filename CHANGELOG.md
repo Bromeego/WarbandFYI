@@ -8,6 +8,10 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 
 - Less work while you play. When the Notebook or an FYI is open, bag, currency and achievement updates are now gathered into one redraw instead of redrawing the whole window for each one, and the redraw waits until combat ends. The quest log is read at most once a second while questing, and rare tracking no longer checks every health change of an ordinary target.
 
+### Fixed
+
+- The one-time clean-up of saved currency history now runs. It removes brief false dips, where a balance read low for a moment and bounced straight back, from Resources graphs and activity. A mistake meant it had never run outside the tests.
+
 ## 0.2.0-dev.2h — 2026-10-31
 
 ### Changed
