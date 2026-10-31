@@ -227,6 +227,31 @@ local secondWay = WBF.Notebook.AddWaypoint(pets.id, {
 sectionView = WBF.NotebookFyi.Describe(sectionTrigger)
 check("several waypoints do not collapse into one button", sectionView and sectionView.waypoint == nil and secondWay ~= nil)
 
+-- Item counts listed one per line must not also ride on the item line.
+WBF.NotebookSmart = WBF.NotebookSmart or {}
+local realDescribe = WBF.NotebookSmart.Describe
+WBF.NotebookSmart.Describe = function()
+    return {
+        title = "Tricky Treat",
+        detail = "You 13  ·  Warband bank 552  ·  Total 673",
+        countRows = {
+            { label = "You", value = 13 },
+            { label = "Warband bank", value = 552 },
+            { label = "Total", value = 673 },
+        },
+    }
+end
+local treat = WBF.Notebook.AddReference(pets.id, { refType = "item", refID = 33226 })
+sectionView = WBF.NotebookFyi.Describe(sectionTrigger)
+WBF.NotebookSmart.Describe = realDescribe
+local treatLines = {}
+for index = 1, #(sectionView and sectionView.lines or {}) do
+    if sectionView.lines[index].blockId == (treat and treat.id) then
+        treatLines[#treatLines + 1] = sectionView.lines[index]
+    end
+end
+check("item counts show once, one per line", #treatLines == 4 and treatLines[1].text == "Tricky Treat" and treatLines[1].detail == nil and treatLines[2].text == "You: 13" and treatLines[4].text == "Total: 673", #treatLines .. " lines, detail=" .. tostring(treatLines[1] and treatLines[1].detail))
+
 WBF.Notebook.DeleteBlock(achievement.id)
 check("deleting the block removes its trigger and keeps the page", WBF.Notebook.GetBlock(achievement.id) == nil and WBF.NotebookFyi.ForTarget("block", achievement.id) == nil and WBF.Notebook.GetPage(page.id) ~= nil)
 

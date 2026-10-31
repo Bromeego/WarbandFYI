@@ -325,34 +325,9 @@ local function EnsurePopup()
     -- A visible scrollbar makes long FYI lists discoverable. The popup grows
     -- with its content first, then this bar appears once the screen-height cap
     -- is reached.
-    popupBar = CreateFrame("Slider", nil, popup)
-    popupBar:SetOrientation("VERTICAL")
-    popupBar:SetWidth(8)
+    popupBar = WBF.UI.ScrollBar(popupScroll, popup)
     popupBar:SetPoint("TOPLEFT", popupScroll, "TOPRIGHT", 2, -2)
     popupBar:SetPoint("BOTTOMLEFT", popupScroll, "BOTTOMRIGHT", 2, 2)
-    popupBar:SetValueStep(1)
-    if popupBar.SetObeyStepOnDrag then
-        popupBar:SetObeyStepOnDrag(true)
-    end
-    popupBar:SetMinMaxValues(0, 1)
-    local track = popupBar:CreateTexture(nil, "BACKGROUND")
-    track:SetPoint("TOP", 0, 0)
-    track:SetPoint("BOTTOM", 0, 0)
-    track:SetWidth(2)
-    track:SetColorTexture(WBF.UI.Colors.line[1], WBF.UI.Colors.line[2], WBF.UI.Colors.line[3], 0.45)
-    popupBar.Track = track
-    local thumb = popupBar:CreateTexture(nil, "OVERLAY")
-    thumb:SetColorTexture(WBF.UI.Colors.gold[1], WBF.UI.Colors.gold[2], WBF.UI.Colors.gold[3], 0.9)
-    thumb:SetSize(8, 36)
-    popupBar:SetThumbTexture(thumb)
-    popupBar.Thumb = thumb
-    popupBar:SetScript("OnValueChanged", function(self, value)
-        if self.updating then
-            return
-        end
-        popupScroll:SetVerticalScroll(value)
-    end)
-    popupBar:Hide()
 
     local function hideContext()
         local ids = popup.ids or {}
@@ -460,14 +435,16 @@ local function Card(index)
         hover:SetColorTexture(WBF.UI.Colors.gold[1], WBF.UI.Colors.gold[2], WBF.UI.Colors.gold[3], 0.08)
         local icon = line:CreateTexture(nil, "ARTWORK")
         icon:SetSize(16, 16)
-        icon:SetPoint("LEFT", 0, 0)
+        icon:SetPoint("TOPLEFT", 0, -1)
         icon:Hide()
         line.Icon = icon
+        -- Item lines carry "You · Warband bank · Total" counts that outgrow
+        -- the card, so they wrap instead of clipping the total.
         local text = line:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-        text:SetPoint("LEFT", 0, 0)
-        text:SetPoint("RIGHT", 0, 0)
+        text:SetPoint("TOPLEFT", 0, -3)
         text:SetJustifyH("LEFT")
-        text:SetWordWrap(false)
+        text:SetJustifyV("TOP")
+        text:SetWordWrap(true)
         Color(text, WBF.UI.Colors.cream)
         line.Text = text
         -- Keep FYI rows lightweight. Item tooltips can become extremely large when
@@ -697,19 +674,29 @@ local function RenderPopup(group, preserveScroll)
                 line:ClearAllPoints()
                 line:SetPoint("TOPLEFT", 8, lineY)
                 line:SetPoint("TOPRIGHT", -8, lineY)
-                line:SetHeight(18)
                 line.Text:ClearAllPoints()
+                local textWidth = width - 16
                 if info and info.icon then
                     line.Icon:SetTexture(info.icon)
                     line.Icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
                     line.Icon:Show()
-                    line.Text:SetPoint("LEFT", line.Icon, "RIGHT", 5, 0)
+                    line.Text:SetPoint("TOPLEFT", line.Icon, "TOPRIGHT", 5, -2)
+                    textWidth = textWidth - 21
+                elseif info and info.indent then
+                    -- Count lines sit indented under the item's name.
+                    line.Icon:Hide()
+                    line.Text:SetPoint("TOPLEFT", 33, -1)
+                    textWidth = textWidth - 33
                 else
                     line.Icon:Hide()
-                    line.Text:SetPoint("LEFT", 0, 0)
+                    line.Text:SetPoint("TOPLEFT", 0, -3)
                 end
-                line.Text:SetPoint("RIGHT", 0, 0)
+                line.Text:SetWidth(textWidth)
                 line.Text:SetText(Shown(lineText))
+                local minHeight = info and info.indent and 14 or 18
+                local padding = info and info.indent and 2 or 6
+                local lineHeight = math.max(minHeight, math.ceil((line.Text:GetStringHeight() or 0) + padding))
+                line:SetHeight(lineHeight)
                 Color(line.Text, info and info.completed and WBF.UI.Colors.muted or WBF.UI.Colors.cream)
                 line.pageId = entry.pageId
                 line.sectionId = entry.sectionId
@@ -718,7 +705,7 @@ local function RenderPopup(group, preserveScroll)
                 line.itemID = info and info.itemID or nil
                 line:EnableMouse(line.blockId and true or false)
                 line:Show()
-                lineY = lineY - 18
+                lineY = lineY - lineHeight
             else
                 line.pageId = nil
                 line.sectionId = nil
@@ -1032,10 +1019,8 @@ local function EnsureSetup()
     setupContextLabel:SetText("Event")
     Color(setupContextLabel, WBF.UI.Colors.muted)
 
-    setupSearch = CreateFrame("EditBox", nil, setup, "InputBoxTemplate")
-    setupSearch:SetSize(270, 20)
+    setupSearch = WBF.UI.EditBox(setup, 270, 20)
     setupSearch:SetPoint("TOPLEFT", 18, -118)
-    setupSearch:SetAutoFocus(false)
     if WBF.UI.KeepKeyboard then
         WBF.UI.KeepKeyboard(setupSearch)
     end

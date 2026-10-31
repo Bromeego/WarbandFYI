@@ -283,7 +283,7 @@ local function TypesPool()
             Color(value, WBF.UI.Colors.cream)
             local back = frame:CreateTexture(nil, "BACKGROUND")
             back:SetHeight(8)
-            back:SetColorTexture(0.14, 0.12, 0.08, 1)
+            back:SetColorTexture(WBF.UI.Colors.trackGold[1], WBF.UI.Colors.trackGold[2], WBF.UI.Colors.trackGold[3], WBF.UI.Colors.trackGold[4])
             local fill = frame:CreateTexture(nil, "ARTWORK")
             fill:SetHeight(8)
             rows[index] = { label = label, value = value, back = back, fill = fill }

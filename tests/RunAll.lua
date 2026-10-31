@@ -3,12 +3,14 @@
 --   lua tests/RunAll.lua
 
 local TESTS = {
+    "BackupChainTest",
     "CharacterDiscoveryTest",
     "CollectionHuntsTest",
     "ContextFyiTest",
     "GoldTrackerTest",
     "HousingDecorTest",
     "LifetimeRetentionTest",
+    "MonthHistoryGapTest",
     "MonthHistoryTest",
     "NotebookFyiTest",
     "NotebookPetsTest",

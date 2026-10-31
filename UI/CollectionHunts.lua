@@ -10,13 +10,22 @@ local adding, editingCharacters, showAllCharacters = false, false, false
 local showCompletedSettings = false
 local showUnknownAttempts = false
 local mountSearchResults = {}
-local goals = {"achievement", "appearance", "item"}
-local gold = {1, .79, .27}
+local goals = {"achievement", "appearance", "item", "pet"}
+
+local function HuntIcon(info)
+    return info.mountIcon or (info.itemID and C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(info.itemID))
+        or (info.itemID and GetItemIcon and GetItemIcon(info.itemID))
+        or (info.achievementID and GetAchievementInfo and select(10, GetAchievementInfo(info.achievementID)))
+        or (info.petSpeciesID and C_PetJournal and C_PetJournal.GetPetInfoBySpeciesID and select(2, C_PetJournal.GetPetInfoBySpeciesID(info.petSpeciesID)))
+end
+local SUCCESS = WBF.UI.Hex(WBF.UI.Colors.success)
+local WARNING = WBF.UI.Hex(WBF.UI.Colors.warning)
+local MUTED = WBF.UI.Hex(WBF.UI.Colors.muted)
+local FAINT = WBF.UI.Hex(WBF.UI.Colors.faint)
+local GOLD = WBF.UI.Hex(WBF.UI.Colors.gold)
 
 local function Button(parent, width, height, caption, click)
-    local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
-    b:SetSize(width, height)
-    b:SetText(caption)
+    local b = WBF.UI.Button(parent, caption, width, height)
     b:SetScript("OnClick", click)
     return b
 end
@@ -66,7 +75,7 @@ local function Build(parent)
     controls.TargetIcon:SetSize(38, 38)
     controls.TargetIcon:SetPoint("TOPLEFT", 290, -101)
     controls.TargetIconBorder = root:CreateTexture(nil, "OVERLAY")
-    controls.TargetIconBorder:SetColorTexture(.65, .49, .21, .85)
+    controls.TargetIconBorder:SetColorTexture(WBF.UI.Colors.goldDim[1], WBF.UI.Colors.goldDim[2], WBF.UI.Colors.goldDim[3], .85)
     controls.TargetIconBorder:SetSize(40, 1)
     controls.TargetIconBorder:SetPoint("TOPLEFT", 289, -100)
     controls.TargetHeading:SetWidth(440)
@@ -186,9 +195,7 @@ local function Build(parent)
 
     controls.AddHeading = Label(root, "GameFontNormal", "Add a hunt")
     controls.MountSearchLabel = Label(root, "GameFontNormal", "Find a mount in your Mount Journal")
-    controls.MountSearch = CreateFrame("EditBox", nil, root, "InputBoxTemplate")
-    controls.MountSearch:SetAutoFocus(false)
-    controls.MountSearch:SetSize(390, 26)
+    controls.MountSearch = WBF.UI.EditBox(root, 390, 26)
     controls.MountSearch:SetMaxLetters(100)
     controls.MountSearch:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
     controls.MountSearch:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
@@ -238,13 +245,11 @@ local function Build(parent)
         Page.Refresh()
     end)
     controls.AddHeading:SetPoint("TOPLEFT", 12, -305)
-    controls.AddHint = Label(root, "GameFontHighlightSmall", "Mounts: search the Journal above. Items: Shift-click a bag item. Achievements: use selected achievement.")
+    controls.AddHint = Label(root, "GameFontHighlightSmall", "Mounts: search the Journal above. Items: Shift-click a bag item. Pets: Shift-click one in the Pet Journal. Achievements: use selected achievement.")
     controls.AddHint:SetPoint("TOPLEFT", 12, -330)
     controls.AddHint:SetWidth(258)
-    controls.Input = CreateFrame("EditBox", nil, root, "InputBoxTemplate")
+    controls.Input = WBF.UI.EditBox(root, 240, 25)
     controls.Input:SetPoint("TOPLEFT", 19, -353)
-    controls.Input:SetSize(240, 25)
-    controls.Input:SetAutoFocus(false)
     controls.Input:SetMaxLetters(300)
     controls.Input:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
     controls.Input:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
@@ -284,7 +289,7 @@ local function Build(parent)
         controls.Feedback:SetText("Achievement selected. Confirm the raid source and click Add Hunt.")
     end)
     controls.UseAchievement:SetPoint("TOPLEFT", 12, -388)
-    controls.SourceLabel = Label(root, "GameFontHighlightSmall", "Choose the raid / boss source:")
+    controls.SourceLabel = Label(root, "GameFontHighlightSmall", "Choose the raid / boss source (holiday bosses included):")
     controls.SourceLabel:SetPoint("TOPLEFT", 12, -427)
     controls.SourceKey = nil
     controls.SourceSelect = Button(root, 252, 28, "Choose raid / boss  v", function(self)
@@ -367,7 +372,7 @@ local function Build(parent)
     controls.StatusText:SetWordWrap(true)
     controls.StatusRows = {}
     local divider = root:CreateTexture(nil,"ARTWORK")
-    divider:SetColorTexture(.55,.42,.17,.55)
+    divider:SetColorTexture(WBF.UI.Colors.line[1], WBF.UI.Colors.line[2], WBF.UI.Colors.line[3], WBF.UI.Colors.line[4])
     divider:SetPoint("TOPLEFT",278,-75)
     divider:SetSize(1,670)
     local function InsertLink(link)
@@ -376,7 +381,8 @@ local function Build(parent)
         -- Do not steal links unless the user is editing this field on this page.
         if not (root and root:IsVisible() and controls.Input and controls.Input:HasFocus()) then return end
         if type(link) ~= "string" then return end
-        if not (link:find("|Hitem:", 1, true) or link:find("|Hachievement:", 1, true)
+        -- Pet Journal Shift-clicks arrive as battlepet links.
+        if not (link:find("|Hitem:", 1, true) or link:find("|Hachievement:", 1, true) or link:find("|Hbattlepet:", 1, true)
             or link:match("^item:%d+") or link:match("^achievement:%d+")) then return end
         controls.Input:SetText(link)
         controls.Input:SetCursorPosition(#link)
@@ -436,10 +442,10 @@ local function Place(widget, x, y)
     widget:ClearAllPoints()
     widget:SetPoint("TOPLEFT", x, -y)
 end
-local function FormatStatus(status)
-    local labels = {available="|cff61df90Available|r", done="|cffdfbb66Completed this week|r",
-        unknown="|cffaaaaaaUnverified|r", collected="|cff61df90Collected|r",
-        excluded="Excluded", ineligible="Ineligible"}
+local function FormatStatus(status, daily)
+    local labels = {available=SUCCESS .. "Available|r", done=daily and WARNING .. "Done today|r" or WARNING .. "Completed this week|r",
+        unknown=MUTED .. "Unverified|r", collected=SUCCESS .. "Collected|r",
+        excluded="Excluded", ineligible="Ineligible", closed=MUTED .. "Event not running|r"}
     return labels[status] or status
 end
 function Page.Refresh()
@@ -497,12 +503,10 @@ function Page.Refresh()
             b.huntKey = key
             Place(b, 12, y)
             local info = catalog[key]
-            local icon = info.mountIcon or (info.itemID and C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(info.itemID))
-                or (info.itemID and GetItemIcon and GetItemIcon(info.itemID))
-                or (info.achievementID and GetAchievementInfo and select(10, GetAchievementInfo(info.achievementID)))
+            local icon = HuntIcon(info)
             b.Icon:SetTexture(icon or 134400)
             b:SetText("")
-            b.Text:SetText((group == complete and "|cff7ee5a0" or not hunts.IsEnabled(key) and "|cff888888" or "|cffffd16d")..info.title.."|r")
+            b.Text:SetText((group == complete and SUCCESS or not hunts.IsEnabled(key) and FAINT or GOLD)..info.title.."|r")
             b:SetAlpha(selectedKey == key and 1 or .83)
             b:Show()
             y = y + 44
@@ -544,7 +548,7 @@ function Page.Refresh()
         end
         local searchBottom = 192 + #matches * 29
         Place(controls.UseMount, 290, searchBottom+8)
-        controls.AddHint:SetText("Or Shift-click a bag item, enter an item ID, or use the selected achievement.")
+        controls.AddHint:SetText("Or Shift-click a bag item or Pet Journal pet, enter an item ID, or use the selected achievement.")
         controls.AddHint:SetWidth(440)
         Place(controls.AddHint, 290, searchBottom+49)
         controls.Input:SetWidth(410)
@@ -572,16 +576,17 @@ function Page.Refresh()
         return
     end
     local settings=hunts.Settings(selectedKey)
+    -- Holiday bosses reset daily, raids weekly; the wording follows the source.
+    local source = info.sourceKey and hunts.Source(info.sourceKey)
+    local daily = source and source.daily or false
     local finished, completionMethod = hunts.Completion(selectedKey)
     controls.TargetHeading:SetText(info.title)
-    local icon = info.mountIcon or (info.itemID and C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(info.itemID))
-        or (info.itemID and GetItemIcon and GetItemIcon(info.itemID))
-        or (info.achievementID and GetAchievementInfo and select(10, GetAchievementInfo(info.achievementID)))
+    local icon = HuntIcon(info)
     controls.TargetIcon:SetTexture(icon or 134400)
     controls.CompletedNote:SetShown(finished)
     controls.CompletedSettings:SetShown(finished)
     controls.CompletedSettings:SetText(showCompletedSettings and "Hide hunt settings" or "Show hunt settings")
-    controls.CompletedNote:SetText(finished and ("|cff7ee5a0GOAL ACHIEVED|r\n" ..
+    controls.CompletedNote:SetText(finished and (SUCCESS .. "GOAL ACHIEVED|r\n" ..
         (completionMethod == "manual" and "Marked complete manually. You can reopen this hunt." or
             "Confirmed by WoW. This collection is no longer included in farming reminders.")) or "")
     local showSettings = not finished or showCompletedSettings
@@ -608,22 +613,26 @@ function Page.Refresh()
         (completionMethod == "manual" and "Marked complete manually. Reopen if needed." or "Collection goal confirmed by WoW. No further runs required.") or
         selectedKey=="thoridal" and settings.goal=="achievement" and
         "Feat of Strength: Hunters, Warriors and Rogues can equip Thori'dal." or
+        daily and "The daily loot bag is tracked per character and resets each day." or
         settings.goal=="mount" and "Available raid attempts are tracked per character." or
         "Eligibility is unverified for this goal unless WarbandFYI has an explicit rule.")
     -- Show actionable characters, successful attempts and unverified counts separately.
-    local available, done, unknown = {}, {}, {}
+    local available, done, unknown, closed = {}, {}, {}, 0
     local characters = SortedCharacters()
     for _,char in ipairs(characters) do
         if char.guid then
             local status = hunts.Status(selectedKey, char.guid)
             if status=="available" then available[#available+1]=char
             elseif status=="done" then done[#done+1]=char
-            elseif status=="unknown" then unknown[#unknown+1]=char end
+            elseif status=="unknown" then unknown[#unknown+1]=char
+            elseif status=="closed" then closed=closed+1 end
         end
     end
-    controls.StatusHeading:SetText(finished and "Collection complete" or "This week's attempts")
+    controls.StatusHeading:SetText(finished and "Collection complete" or (daily and "Today's attempts" or "This week's attempts"))
     Place(controls.StatusHeading, 290, 325)
-    controls.StatusText:SetText(finished and "|cff77e39bGoal achieved|r  - farming reminders stopped" or ("|cff6ee29a"..#available.." available|r   •   "..#done.." attempted   •   "..#unknown.." unverified"))
+    controls.StatusText:SetText(finished and SUCCESS .. "Goal achieved|r  - farming reminders stopped" or
+        (closed>0 and #available==0 and #done==0 and #unknown==0) and (MUTED..info.instance.." is not running right now|r") or
+        (SUCCESS..#available.." available|r   •   "..#done..(daily and " done today" or " attempted").."   •   "..#unknown.." unverified"))
     Place(controls.StatusText, 290, 349)
     -- Compact non-editing preview: never list excluded/ineligible characters.
     controls.EditCharacters:SetText(editingCharacters and "Done editing characters" or "Edit farming characters")
@@ -661,8 +670,8 @@ function Page.Refresh()
         controls.CharHeading:Hide()
         -- The first two groups are always useful; unverified alts are opt-in.
         local groups={
-            {label="AVAILABLE  ("..#available..")",items=available,color="|cff77e39b",x=290},
-            {label="ATTEMPTED THIS WEEK  ("..#done..")",items=done,color="|cffdfbb66",x=557},
+            {label="AVAILABLE  ("..#available..")",items=available,color=SUCCESS,x=290},
+            {label=(daily and "DONE TODAY  (" or "ATTEMPTED THIS WEEK  (")..#done..")",items=done,color=WARNING,x=557},
         }
         local biggest=0
         for i,group in ipairs(groups) do
@@ -682,7 +691,7 @@ function Page.Refresh()
         maxBottom=math.max(maxBottom,unknownY+30)
         if showUnknownAttempts and #unknown>0 then
             local h=controls.AttemptHeadings[3]
-            h:SetText("|cffaaaaaaNOT YET VERIFIED — visit each character to update its lockout|r")
+            h:SetText((daily and MUTED .. "NOT YET VERIFIED — log in on each character today to check its bag|r" or MUTED .. "NOT YET VERIFIED — visit each character to update its lockout|r"))
             Place(h,290,unknownY+38)
             h:Show()
             for i,char in ipairs(unknown) do
@@ -716,7 +725,7 @@ function Page.Refresh()
         local name=(char.name or "Unknown")
         local realm=(char.realm and char.realm~="") and (" - "..char.realm) or ""
         -- Keep status legible without truncating the name on narrow columns.
-        b:SetText(prefix..name..realm.."  "..FormatStatus(status))
+        b:SetText(prefix..name..realm.."  "..FormatStatus(status, daily))
         b:SetEnabled(editingCharacters and settings.characterMode=="selected")
         b:Show()
     end

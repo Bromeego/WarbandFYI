@@ -4,6 +4,36 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 
 ## Unreleased
 
+## 0.2.0-dev.2g — 2026-10-30
+
+### Changed
+
+- Buttons, text boxes and scrollbars now match the WarbandFYI theme everywhere, replacing the stock red Blizzard buttons and input boxes. Buttons highlight gold on hover and dim when unavailable.
+- Status colours are consistent across Collection Hunts, the Dashboard and Resources: one green for available or collected, one amber for done or attempted, and one grey for unverified.
+
+### Fixed
+
+- Shift-clicking an item from your bags now fills the Notebook **Track Item** box, even with chat closed.
+- Blizzard's internal data-store currencies (Dragon Racing **Temp Storage** and **Scoreboard** entries, Housing **Personal Best Record** entries) no longer show up under Resources as Unknown / Other.
+
+## 0.2.0-dev.2f — 2026-10-30
+
+### Added
+
+- Collection Hunts can track the **Headless Horseman** daily loot bag during Hallow's End. Each character shows Available or Done today, resetting daily, and the login FYI lists characters that have not looted today's bag. Hunts can now target pets (Shift-click in the Pet Journal or a pet item) and complete automatically once the pet is collected.
+
+### Fixed
+
+- Item counts on FYI lines no longer appear twice: the item line shows only its name, with You, Warband bank and Total each on their own line below.
+
+## 0.2.0-dev.2e — 2026-10-28
+
+### Fixed
+
+- The last month you played before a break of about three months or more is now rolled up when you return, instead of being lost as retention removed its rows. A closed month whose raw rows were trimmed reads its complete rollup.
+
+## 0.2.0-dev.2d — 2026-10-27
+
 ### Added
 
 - Optional, read-only **Queued in Rematch** status on Notebook pets, Sheet and FYI. Hidden when Rematch is unavailable or the exact pet is not queued; no extra notifications or queue management.
@@ -15,6 +45,7 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 
 ### Fixed
 
+- A saved-data upgrade no longer replaces the previous pre-upgrade backup. Every earlier backup is kept, unchanged, in `WarbandFYI_Backup.previous`, and Maintenance shows how many are kept.
 - Recurring event FYIs keep the same occurrence across a reload, so a completed or hidden holiday checklist no longer comes back a few seconds later.
 - Dashboard **Net Gold** opens the gold chart for the period you are viewing.
 - Pet Level Lists can be renamed from the block menu.
@@ -39,6 +70,7 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 
 ### Changed
 
+- Notebook reads no longer re-check the whole notebook on every call. Listing 20 pages with 300 blocks went from about 1.6 seconds to under a millisecond in testing, so large notebooks stay responsive.
 - Dashboard currency tiles read the event log once per refresh instead of once per tracked resource, cutting a full-log week refresh from roughly 100–300 ms to under 30 ms in testing.
 
 - Balance History and Net Gold History draw a smooth, anti-aliased line with a soft glow and a gradient fill. Observation dots appear on hover; only the latest point stays marked.

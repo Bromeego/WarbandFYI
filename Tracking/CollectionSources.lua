@@ -37,11 +37,18 @@ WBF.CollectionSources = {
             -- Neither lockout spends a Normal or Heroic Ji-Kun attempt.
             ignoreDifficulties = { [7] = true, [17] = true },
         },
+        -- Holiday bosses have no saved lockout. The first kill each day gives
+        -- each character a loot bag; the LFG reward state says if it is spent.
+        headless = {
+            instance = "Hallow's End", boss = "Headless Horseman",
+            daily = true, lfgDungeonID = 285, eventKey = "hallows_end",
+            collectionType = "pet", note = "Daily loot bag, once per character per day",
+        },
         mimiron = {
             instance = "Ulduar", boss = "Yogg-Saron", itemIDs = {45693},
             collectionType = "mount", mountSpellID = 63796,
             difficulty = "Zero Keepers", note = "Zero Keeper assistance for normal drop",
         },
     },
-    Keys = {"thoridal", "onyxian", "southwind", "ashes", "invincible", "mimiron", "jikun"},
+    Keys = {"thoridal", "onyxian", "southwind", "ashes", "invincible", "mimiron", "jikun", "headless"},
 }

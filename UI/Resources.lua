@@ -2,6 +2,10 @@ local _, WBF = ...
 
 WBF.UI.Resources = {}
 
+local MUTED = WBF.UI.Hex(WBF.UI.Colors.muted)
+local GREEN = WBF.UI.Hex(WBF.UI.Colors.green)
+local RED = WBF.UI.Hex(WBF.UI.Colors.red)
+
 local root
 local panel
 local titleText
@@ -63,7 +67,7 @@ end
 local function PaintChoice(button, selected)
     if selected then
         WBF.UI.Paint(button, WBF.UI.Colors.blue, WBF.UI.Colors.gold)
-        button.Label:SetTextColor(1, 0.95, 0.85)
+        button.Label:SetTextColor(WBF.UI.Colors.bright[1], WBF.UI.Colors.bright[2], WBF.UI.Colors.bright[3])
     else
         WBF.UI.Paint(button, WBF.UI.Colors.card, WBF.UI.Colors.goldDim)
         button.Label:SetTextColor(0.78, 0.76, 0.68)
@@ -273,7 +277,7 @@ local function ApplyCard(frame, card, selected)
     frame.Name:SetText(card.name)
     frame.Name:SetTextColor(WBF.UI.Colors.cream[1], WBF.UI.Colors.cream[2], WBF.UI.Colors.cream[3])
     frame.Amount:SetText(WBF.Format.Number(card.amount or 0))
-    frame.Amount:SetTextColor(1, 0.95, 0.85)
+    frame.Amount:SetTextColor(WBF.UI.Colors.bright[1], WBF.UI.Colors.bright[2], WBF.UI.Colors.bright[3])
     frame.Caption:SetText(card.caption or "")
     frame.Caption:SetTextColor(WBF.UI.Colors.muted[1], WBF.UI.Colors.muted[2], WBF.UI.Colors.muted[3])
     local earned = card.earned or 0
@@ -667,14 +671,14 @@ local function RenderPanel(detail)
         line:SetPoint("TOPLEFT", panel, "TOPLEFT", 12, -y)
         WBF.UI.Paint(line, { 0, 0, 0, 0 }, { 0, 0, 0, 0 })
         local delta = entry.delta or 0
-        local color = "|cff9a9aa8"
+        local color = MUTED
         if delta > 0 and entry.classification ~= "transfer" then
-            color = "|cff59f27a"
+            color = GREEN
         elseif delta < 0 and entry.classification ~= "transfer" then
-            color = "|cfff26152"
+            color = RED
         end
         line.Text:SetText(ShortAgo(entry.at) .. "   " .. color .. WBF.Format.Signed(delta) .. "|r   " .. (entry.label or ""))
-        line.Text:SetTextColor(0.9, 0.88, 0.82)
+        line.Text:SetTextColor(WBF.UI.Colors.cream[1], WBF.UI.Colors.cream[2], WBF.UI.Colors.cream[3])
         y = y + 16
     end
 
@@ -705,9 +709,7 @@ function WBF.UI.Resources.Attach(parent, sidePanel)
     updatedText = root:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     updatedText:SetJustifyH("RIGHT")
 
-    refreshButton = CreateFrame("Button", nil, root, "UIPanelButtonTemplate")
-    refreshButton:SetSize(108, 22)
-    refreshButton:SetText("Refresh Now")
+    refreshButton = WBF.UI.Button(root, "Refresh Now", 108, 22)
     refreshButton:SetScript("OnClick", function()
         if WBF.Resources.QueueFullScan then
             WBF.Resources.QueueFullScan()
@@ -811,7 +813,7 @@ function WBF.UI.Resources.Attach(parent, sidePanel)
     totalLabel:SetTextColor(WBF.UI.Colors.muted[1], WBF.UI.Colors.muted[2], WBF.UI.Colors.muted[3])
     local totalValue = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
     totalValue:SetPoint("TOPLEFT", totalLabel, "BOTTOMLEFT", 0, -2)
-    totalValue:SetTextColor(1, 0.95, 0.85)
+    totalValue:SetTextColor(WBF.UI.Colors.bright[1], WBF.UI.Colors.bright[2], WBF.UI.Colors.bright[3])
     local weekLine = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     weekLine:SetPoint("TOPLEFT", totalValue, "BOTTOMLEFT", 0, -2)
     local updated = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -873,8 +875,7 @@ function WBF.UI.Resources.Attach(parent, sidePanel)
         tip = tip,
     }
 
-    historyButton = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
-    historyButton:SetHeight(22)
+    historyButton = WBF.UI.Button(panel, nil, nil, 22)
     historyButton:SetPoint("BOTTOMLEFT", 12, 36)
     historyButton:SetPoint("BOTTOMRIGHT", -12, 36)
     historyButton:SetText("View Full History")
@@ -883,8 +884,7 @@ function WBF.UI.Resources.Attach(parent, sidePanel)
             WBF.UI.frame:OpenDetail("resource", { resourceKey = self.resourceKey, period = "week" })
         end
     end)
-    watchButton = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
-    watchButton:SetHeight(22)
+    watchButton = WBF.UI.Button(panel, nil, nil, 22)
     watchButton:SetPoint("BOTTOMLEFT", 12, 10)
     watchButton:SetPoint("BOTTOMRIGHT", -12, 10)
     watchButton:SetText("Add to Watchlist")
@@ -917,7 +917,7 @@ local function PlaceEraHeader(eraId, label, cards, y, width)
         end
     end)
     header:SetScript("OnEnter", function(self)
-        self.Title:SetTextColor(1, 0.95, 0.85)
+        self.Title:SetTextColor(WBF.UI.Colors.bright[1], WBF.UI.Colors.bright[2], WBF.UI.Colors.bright[3])
     end)
     header:SetScript("OnLeave", function(self)
         self.Title:SetTextColor(WBF.UI.Colors.gold[1], WBF.UI.Colors.gold[2], WBF.UI.Colors.gold[3])

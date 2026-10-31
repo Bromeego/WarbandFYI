@@ -144,8 +144,16 @@ local function RoleSegment(segment)
     return false
 end
 
--- Versioned or evergreen counters, or a dash-separated System/Tracker role.
--- "Bounty Tracker" and "Weekly Cap Token" do not match.
+-- Segments Blizzard uses for currencies that only store data, such as a race
+-- quest ID, a best time in milliseconds or a route record.
+local STORAGE_ROLES = {
+    ["temp storage"] = true,
+    ["scoreboard"] = true,
+    ["personal best record"] = true,
+}
+
+-- Versioned or evergreen counters, or a dash-separated System/Tracker or
+-- storage role. "Bounty Tracker" and "Weekly Cap Token" do not match.
 local function BookkeepingName(name)
     if name == "" or not name:find(" - ", 1, true) then
         return false
@@ -166,7 +174,7 @@ local function BookkeepingName(name)
     end
     for index = 2, #parts do
         local lower = parts[index]:lower()
-        if lower == "system" or lower == "tracker" then
+        if lower == "system" or lower == "tracker" or STORAGE_ROLES[lower] then
             return true
         end
     end

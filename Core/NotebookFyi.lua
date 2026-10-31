@@ -966,13 +966,31 @@ local function LinesFor(block)
             text = FirstLine((block.refType or "Reference") .. " " .. tostring(block.refID or ""))
         end
         local itemID = block.refType == "item" and Whole(block.refID) or nil
+        local countRows = described and described.countRows or nil
+        -- With count rows the counts get their own lines, so the item line
+        -- keeps only the label note (if any), not the joined count text.
+        local detail = described and described.detail or nil
+        if countRows then
+            detail = described.note
+        end
         lines[1] = {
             text = text,
-            detail = described and described.detail or nil,
+            detail = detail,
+            summary = described and described.detail or nil,
             blockId = block.id,
             icon = described and described.icon or nil,
             itemID = itemID,
         }
+        -- Each count gets its own indented line under the item.
+        for index = 1, #(countRows or {}) do
+            local row = countRows[index]
+            lines[#lines + 1] = {
+                text = row.label .. ": " .. tostring(row.value),
+                indent = true,
+                blockId = block.id,
+                itemID = itemID,
+            }
+        end
         return lines
     end
     return lines
@@ -1054,8 +1072,9 @@ function WBF.NotebookFyi.Describe(trigger)
     if trigger.targetKind == "block" and not (blocks[1] and blocks[1].type == "pet_level_list") then
         lines = {}
         local line = blocks[1] and LineFor(blocks[1]) or nil
-        if line and line.detail then
-            lines[1] = { text = line.detail, blockId = line.blockId or trigger.targetId, itemId = line.itemId }
+        local detail = line and (line.summary or line.detail) or nil
+        if detail then
+            lines[1] = { text = detail, blockId = line.blockId or trigger.targetId, itemId = line.itemId }
         end
     end
     local zoneName = nil

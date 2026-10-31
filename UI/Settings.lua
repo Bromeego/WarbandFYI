@@ -27,7 +27,7 @@ end
 local function PaintTimeout(button, selected)
     if selected then
         WBF.UI.Paint(button, WBF.UI.Colors.blue, WBF.UI.Colors.gold)
-        button.Label:SetTextColor(1, 0.95, 0.85)
+        button.Label:SetTextColor(WBF.UI.Colors.bright[1], WBF.UI.Colors.bright[2], WBF.UI.Colors.bright[3])
     else
         WBF.UI.Paint(button, WBF.UI.Colors.card, WBF.UI.Colors.goldDim)
         Color(button.Label, WBF.UI.Colors.cream)
@@ -61,10 +61,8 @@ local function Body(text, y, width, font)
 end
 
 local function Button(text, width, x, y, onClick)
-    local button = CreateFrame("Button", nil, root, "UIPanelButtonTemplate")
-    button:SetSize(width, 24)
+    local button = WBF.UI.Button(root, text, width, 24)
     button:SetPoint("TOPLEFT", x, -y)
-    button:SetText(text)
     button:SetScript("OnClick", onClick)
     return button
 end
@@ -116,9 +114,22 @@ local function ShowCopyDialog(titleText, value)
         panel:SetPoint("BOTTOMRIGHT", -16, 46)
         WBF.UI.Paint(panel, { 0.025, 0.03, 0.04, 0.98 }, WBF.UI.Colors.goldDim)
 
-        local scrollFrame = CreateFrame("ScrollFrame", nil, panel, "UIPanelScrollFrameTemplate")
+        local scrollFrame = CreateFrame("ScrollFrame", nil, panel)
         scrollFrame:SetPoint("TOPLEFT", 8, -8)
         scrollFrame:SetPoint("BOTTOMRIGHT", -28, 8)
+        local scrollBar = WBF.UI.ScrollBar(scrollFrame, panel)
+        scrollBar:SetPoint("TOPLEFT", scrollFrame, "TOPRIGHT", 10, 0)
+        scrollBar:SetPoint("BOTTOMLEFT", scrollFrame, "BOTTOMRIGHT", 10, 0)
+        local function syncScroll()
+            WBF.UI.SyncScrollBar(scrollFrame, scrollBar)
+        end
+        scrollFrame:SetScript("OnScrollRangeChanged", syncScroll)
+        scrollFrame:SetScript("OnVerticalScroll", syncScroll)
+        scrollFrame:EnableMouseWheel(true)
+        scrollFrame:SetScript("OnMouseWheel", function(self, delta)
+            local range = self:GetVerticalScrollRange()
+            self:SetVerticalScroll(math.max(0, math.min(range, self:GetVerticalScroll() - delta * 40)))
+        end)
 
         local edit = CreateFrame("EditBox", nil, scrollFrame)
         edit:SetMultiLine(true)
@@ -134,10 +145,8 @@ local function ShowCopyDialog(titleText, value)
         scrollFrame:SetScrollChild(edit)
         dialog.Edit = edit
 
-        local done = CreateFrame("Button", nil, dialog, "UIPanelButtonTemplate")
-        done:SetSize(90, 24)
+        local done = WBF.UI.Button(dialog, "Close", 90, 24)
         done:SetPoint("BOTTOMRIGHT", -16, 14)
-        done:SetText("Close")
         done:SetScript("OnClick", function() dialog:Hide() end)
 
         copyDialog = dialog
@@ -449,7 +458,7 @@ function WBF.UI.Settings.Refresh()
     if diagnosticsStatus and WBF.Maintenance and WBF.Maintenance.Diagnostics then
         local d = WBF.Maintenance.Diagnostics()
         local size = WBF.Maintenance.HumanBytes and WBF.Maintenance.HumanBytes(d.approximateBytes) or tostring(d.approximateBytes or 0)
-        local backup = d.migrationBackupAt and ("migration backup schema " .. tostring(d.migrationBackupFrom) .. " -> " .. tostring(d.migrationBackupTarget)) or "no migration backup needed yet"
+        local backup = d.migrationBackupAt and ("migration backup schema " .. tostring(d.migrationBackupFrom) .. " -> " .. tostring(d.migrationBackupTarget) .. ", " .. tostring(d.migrationBackupsKept or 1) .. " kept") or "no migration backup needed yet"
         diagnosticsStatus:SetText("Schema " .. tostring(d.schemaVersion) .. " · approx " .. size .. " · " .. tostring(d.events) .. " events · " .. tostring(d.snapshots) .. " snapshots · " .. tostring(d.monthHistory) .. " month rollups · " .. backup .. ".")
     end
     local selected = WarbandFYI_DB.config.sessionTimeoutSeconds or 3600

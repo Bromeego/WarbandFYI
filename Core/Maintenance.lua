@@ -126,6 +126,13 @@ function WBF.Maintenance.Diagnostics()
     local resources = ResourceCounts(db.resources)
     local maintenance = type(db.maintenance) == "table" and db.maintenance or {}
     local backup = type(WarbandFYI_Backup) == "table" and WarbandFYI_Backup or nil
+    local backupsKept = 0
+    if WarbandFYI_Backup ~= nil then
+        backupsKept = 1
+        if backup and type(backup.previous) == "table" then
+            backupsKept = backupsKept + #backup.previous
+        end
+    end
     return {
         addonVersion = WBF.VERSION or "?",
         schemaVersion = db.schemaVersion or 0,
@@ -150,6 +157,7 @@ function WBF.Maintenance.Diagnostics()
         migrationBackupAt = backup and backup.createdAt or nil,
         migrationBackupFrom = backup and backup.fromSchema or nil,
         migrationBackupTarget = backup and backup.targetSchema or nil,
+        migrationBackupsKept = backupsKept,
     }
 end
 
@@ -200,7 +208,7 @@ function WBF.Maintenance.DiagnosticsText()
         "Invalid navigation routes blocked: " .. tostring(d.invalidRoutesBlocked),
     }
     if d.migrationBackupAt then
-        lines[#lines + 1] = "Automatic migration backup: " .. When(d.migrationBackupAt) .. " (schema " .. tostring(d.migrationBackupFrom) .. " -> " .. tostring(d.migrationBackupTarget) .. ")"
+        lines[#lines + 1] = "Automatic migration backup: " .. When(d.migrationBackupAt) .. " (schema " .. tostring(d.migrationBackupFrom) .. " -> " .. tostring(d.migrationBackupTarget) .. "), " .. tostring(d.migrationBackupsKept) .. " kept"
     else
         lines[#lines + 1] = "Automatic migration backup: none"
     end

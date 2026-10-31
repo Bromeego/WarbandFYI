@@ -270,7 +270,7 @@ function WBF.UI.Detail.Attach(parent)
         end
     end)
     backButton:SetScript("OnEnter", function()
-        backLabel:SetTextColor(1, 0.92, 0.7)
+        backLabel:SetTextColor(WBF.UI.Colors.bright[1], WBF.UI.Colors.bright[2], WBF.UI.Colors.bright[3])
     end)
     backButton:SetScript("OnLeave", function()
         backLabel:SetTextColor(WBF.UI.Colors.gold[1], WBF.UI.Colors.gold[2], WBF.UI.Colors.gold[3])

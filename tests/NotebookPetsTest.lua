@@ -138,7 +138,16 @@ local function frame(parent)
 end
 CreateFrame = function(_, _, parent) return frame(parent) end
 UIParent = frame()
-WBF.UI = { Paint = function() end, Colors = {} }
+WBF.UI = {
+    Paint = function() end,
+    Colors = { gold = { 1, 0.8, 0.4 } },
+    Button = function(parent, text)
+        local b = frame(parent)
+        b:SetText(text)
+        return b
+    end,
+    EditBox = function(parent) return frame(parent) end,
+}
 load("UI/NotebookPets.lua")
 local ids = {}
 for i = 1, 12 do
@@ -152,7 +161,7 @@ WBF.UI.NotebookPets.Open(uiBlock.id)
 local nextButton, resultRows
 resultRows = {}
 for _, f in ipairs(frames) do
-    if type(rawget(f, "Label")) == "table" and f.Label.text == "Next" then nextButton = f end
+    if rawget(f, "text") == "Next" then nextButton = f end
     if type(rawget(f, "Text")) == "table" and rawget(f, "Icon") then resultRows[#resultRows + 1] = f end
 end
 eq(nextButton.enabled, true)

@@ -49,12 +49,12 @@ local function PaintNav(button)
     if button.selected then
         button.Background:SetColorTexture(WBF.UI.Colors.blue[1], WBF.UI.Colors.blue[2], WBF.UI.Colors.blue[3], 0.95)
         button.Bar:Show()
-        button.Label:SetTextColor(1, 0.95, 0.85)
+        button.Label:SetTextColor(WBF.UI.Colors.bright[1], WBF.UI.Colors.bright[2], WBF.UI.Colors.bright[3])
         button.Icon:SetVertexColor(1, 0.9, 0.65)
     elseif button.hovered then
         button.Background:SetColorTexture(1, 1, 1, 0.06)
         button.Bar:Hide()
-        button.Label:SetTextColor(0.9, 0.88, 0.82)
+        button.Label:SetTextColor(WBF.UI.Colors.cream[1], WBF.UI.Colors.cream[2], WBF.UI.Colors.cream[3])
         button.Icon:SetVertexColor(0.85, 0.85, 0.88)
     else
         button.Background:SetColorTexture(0, 0, 0, 0)

@@ -112,6 +112,52 @@ check("25 normal lich king is not a heroic clear", WBF.CollectionHunts.Status(in
 lockout("icecrowncitadel", { save(6, "thelichking") })
 check("25 heroic lich king is done", WBF.CollectionHunts.Status(invincible, "A") == "done")
 
+-- Daily holiday boss bags: done today per character, cleared at reset.
+local doneToday = false
+local petsOwned = 0
+local hallowsEnd = true
+function GetLFGDungeonRewards(id)
+    return id == 285 and doneToday or false
+end
+C_DateAndTime = { GetSecondsUntilDailyReset = function() return 3600 end }
+C_PetJournal = {
+    GetPetInfoByItemID = function(itemID)
+        if itemID == 70000 then return "Arfus", 1, 2, nil, nil, nil, nil, nil, nil, nil, nil, nil, 4321 end
+    end,
+    GetPetInfoBySpeciesID = function(speciesID)
+        if speciesID == 4321 then return "Arfus", 12345 end
+    end,
+    GetNumCollectedInfo = function() return petsOwned, 3 end,
+}
+WBF.EventTriggers = {
+    Active = function()
+        return hallowsEnd and { { eventKey = "hallows_end" } } or {}
+    end,
+}
+
+reset()
+local arfus = WBF.CollectionHunts.AddTarget("70000", "headless")
+local arfusInfo = arfus and WBF.CollectionHunts.Catalog()[arfus]
+check("a pet cage item becomes a pet hunt", arfusInfo and arfusInfo.petSpeciesID == 4321 and arfusInfo.title == "Arfus" and WBF.CollectionHunts.Settings(arfus).goal == "pet")
+local fromJournal = WBF.CollectionHunts.AddTarget("|cff0070dd|Hbattlepet:4321:1:3:150:10:10:0000000000000000|h[Arfus]|h|r", "headless")
+check("a pet journal link becomes a pet hunt", fromJournal and WBF.CollectionHunts.Catalog()[fromJournal].petSpeciesID == 4321)
+check("an unseen character is unverified", WBF.CollectionHunts.Status(arfus, "A") == "unknown")
+WBF.CollectionHunts.SyncDaily()
+check("an unlooted daily bag is available", WBF.CollectionHunts.Status(arfus, "A") == "available")
+doneToday = true
+WBF.CollectionHunts.SyncDaily()
+check("a looted daily bag is done today", WBF.CollectionHunts.Status(arfus, "A") == "done")
+now = now + 3601
+check("the daily reset clears done to unverified", WBF.CollectionHunts.Status(arfus, "A") == "unknown")
+doneToday = false
+WBF.CollectionHunts.SyncDaily()
+hallowsEnd = false
+check("the boss is closed outside the event", WBF.CollectionHunts.Status(arfus, "A") == "closed")
+hallowsEnd = true
+petsOwned = 1
+check("owning the pet completes the hunt", WBF.CollectionHunts.Status(arfus, "A") == "collected")
+petsOwned = 0
+
 reset()
 check("hunter is not a hunt command", WBF.CollectionHunts.Slash("hunter") == false)
 check("hunter prints nothing", #said == 0)

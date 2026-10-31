@@ -866,10 +866,17 @@ local function BuildSummary(view, offset, forcedCtx, forceRaw)
         monthCtx = WBF.Aggregator.MonthContext(offset)
     end
     -- A month that closed while the player was away for longer than retention
-    -- never got a rollup; its retained tail beats an empty month.
-    if monthCtx and monthCtx.closed and not forceRaw and WBF.MonthHistory and WBF.MonthHistory.CoversRaw and not WBF.MonthHistory.CoversRaw(monthCtx.startAt)
-        and (not WBF.MonthHistory.Get or WBF.MonthHistory.Get(monthCtx.key) or not WBF.MonthHistory.HasRecords or not WBF.MonthHistory.HasRecords(monthCtx.startAt, monthCtx.endAt)) then
-        return WBF.MonthHistory.SummaryFor(monthCtx)
+    -- never got a rollup; its retained tail beats an empty month. A month that
+    -- has a rollup and has lost raw rows, by retention or the size cap, reads
+    -- the rollup, which was taken while its rows were complete.
+    if monthCtx and monthCtx.closed and not forceRaw and WBF.MonthHistory and WBF.MonthHistory.CoversRaw then
+        local rollup = WBF.MonthHistory.Get and WBF.MonthHistory.Get(monthCtx.key) or nil
+        local covered = WBF.MonthHistory.CoversRaw(monthCtx.startAt)
+        local intact = not WBF.MonthHistory.RowsIntact or WBF.MonthHistory.RowsIntact(monthCtx.startAt)
+        if (rollup and not (covered and intact))
+            or (not covered and (not WBF.MonthHistory.Get or not WBF.MonthHistory.HasRecords or not WBF.MonthHistory.HasRecords(monthCtx.startAt, monthCtx.endAt))) then
+            return WBF.MonthHistory.SummaryFor(monthCtx)
+        end
     end
     local startAt, endAt, label, emptyReason
     if monthCtx then
