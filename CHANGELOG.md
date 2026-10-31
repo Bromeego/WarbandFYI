@@ -6,7 +6,7 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 
 ### Changed
 
-- Adding a Collection Hunt uses one box for every kind of target. Type a mount name and pick it from the suggestions, Shift-click a bag item or Pet Journal pet, enter an item ID, or use **Selected Mount** / **Selected Achievement**. The line under the form says what it recognised, such as "Pet: Arfus" or "Mount: Invincible's Reins".
+- Adding a Collection Hunt uses one box for every kind of target. Type a mount name and pick it from the suggestions, Shift-click a bag item or Pet Journal pet, enter an item ID, or click **Use Current Selection** to take what's selected in the open Mount Journal, Pet Journal or Achievements window. The line under the form says what it recognised, such as "Pet: Arfus" or "Mount: Invincible's Reins".
 - Collection Hunts reads where a mount or pet comes from in its Journal entry (for example *Drop: Headless Horseman, Zone: Scarlet Monastery*) and picks the matching raid or boss automatically. Only bosses WarbandFYI already supports are chosen. Anything else shows the Journal text and asks you to pick.
 - The Add Hunt form is tidier: mount suggestions show their icon with an **Owned** tag, the source and Add Hunt buttons span the form, Add Hunt stays disabled until something is entered, and dropdowns use an arrow instead of a trailing "v".
 - Dashboard currency tooltips list each figure on its own line, with the label on the left and the value on the right: net for the period, current balance, earned and spent, each in its own colour.

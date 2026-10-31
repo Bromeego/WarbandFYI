@@ -47,6 +47,20 @@ local function SetDropdown(button, caption)
     end
     button:SetText(caption)
 end
+-- A battlepet link for a Journal pet: Blizzard's own for an owned pet, or
+-- one built from the species for a pet not yet collected.
+local function PetLink(speciesID, petID)
+    if petID and C_PetJournal and C_PetJournal.GetBattlePetLink then
+        local link = WBF.Format.PlainString(WBF.Format.SafeCall(C_PetJournal.GetBattlePetLink, petID))
+        if link then return link end
+    end
+    if type(speciesID) ~= "number" or speciesID <= 0 then return nil end
+    local name
+    if C_PetJournal and C_PetJournal.GetPetInfoBySpeciesID then
+        name = WBF.Format.PlainString((WBF.Format.SafeCall(C_PetJournal.GetPetInfoBySpeciesID, speciesID)))
+    end
+    return string.format("|cffffd200|Hbattlepet:%d:1:0:0:0:0:0000000000000000|h[%s]|h|r", speciesID, name or ("Pet #" .. speciesID))
+end
 local function Label(parent, font, text)
     local f = parent:CreateFontString(nil, "OVERLAY", font or "GameFontHighlight")
     f:SetJustifyH("LEFT")
@@ -237,16 +251,6 @@ local function Build(parent)
         end
         controls.MountResults[i] = b
     end
-    controls.UseMount = Button(root, 215, 27, "Selected Mount", function()
-        local selected = MountJournal and MountJournal.selectedMountID
-        if type(selected) ~= "number" then
-            controls.Feedback:SetText("Select a mount in WoW's Mount Journal first, or type its name above.")
-            return
-        end
-        local entry = WBF.CollectionHunts.Mount(selected)
-        if not entry then controls.Feedback:SetText("Selected mount is not available in the journal index."); return end
-        PickMount(entry)
-    end)
     controls.Input = WBF.UI.EditBox(root, 240, 25)
     controls.Input:SetMaxLetters(300)
     controls.Input:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
@@ -254,22 +258,60 @@ local function Build(parent)
     controls.Input:SetScript("OnTextChanged", function(self, userInput)
         Page.TargetChanged(userInput)
     end)
-    -- Retail achievement Shift-click can toggle Blizzard's own tracking instead
-    -- of inserting a chat link. Use Blizzard's current selection explicitly.
-    controls.UseAchievement = Button(root, 215, 27, "Selected Achievement", function()
-        local id
-        if type(AchievementFrameAchievements_GetSelectedAchievementId) == "function" then
-            id = AchievementFrameAchievements_GetSelectedAchievementId()
+    -- One button for whatever is selected in an open window: the Mount
+    -- Journal, the Pet Journal, or the Achievements window.
+    local function SelectionTargets()
+        local found = {}
+        if MountJournal and MountJournal:IsVisible() then
+            local entry = type(MountJournal.selectedMountID) == "number" and WBF.CollectionHunts.Mount(MountJournal.selectedMountID)
+            found[#found + 1] = { window = "Mount Journal", mount = entry or nil }
         end
-        if type(id) ~= "number" or id <= 0 then
-            controls.Feedback:SetText("Select an achievement in WoW's Achievements window first, then click here.")
+        if PetJournal and PetJournal:IsVisible() then
+            local card = PetJournalPetCard
+            local species = card and WBF.Format.AsNumber(card.speciesID)
+            local link = card and PetLink(species, card.petID)
+            found[#found + 1] = { window = "Pet Journal", link = link }
+        end
+        if AchievementFrame and AchievementFrame:IsVisible() then
+            local id
+            if type(AchievementFrameAchievements_GetSelectedAchievementId) == "function" then
+                id = AchievementFrameAchievements_GetSelectedAchievementId()
+            end
+            local link
+            if type(id) == "number" and id > 0 then
+                link = (GetAchievementLink and GetAchievementLink(id)) or ("achievement:" .. id)
+            end
+            found[#found + 1] = { window = "Achievements window", link = link }
+        end
+        return found
+    end
+    controls.UseSelection = Button(root, 430, 27, "Use Current Selection", function()
+        local found = SelectionTargets()
+        if #found == 0 then
+            controls.Feedback:SetText("Open the Mount Journal, Pet Journal or Achievements window and select something first.")
             return
         end
-        local link = GetAchievementLink and GetAchievementLink(id)
-        controls.Input:SetText(link or ("achievement:" .. id))
-        controls.Input:SetCursorPosition(#controls.Input:GetText())
-        Page.TargetChanged(false)
-        controls.Feedback:SetText("Achievement selected. Confirm the raid source and click Add Hunt.")
+        if #found > 1 then
+            local names = {}
+            for _, entry in ipairs(found) do names[#names + 1] = entry.window end
+            controls.Feedback:SetText("Both the " .. table.concat(names, " and the ") .. " are open. Close one so it's clear which to use.")
+            return
+        end
+        local pick = found[1]
+        if pick.mount then
+            PickMount(pick.mount)
+        elseif pick.link then
+            controls.Input:SetText(pick.link)
+            controls.Input:SetCursorPosition(#pick.link)
+            Page.TargetChanged(false)
+            Page.Refresh()
+        else
+            controls.Feedback:SetText("Nothing is selected in the " .. pick.window .. ". Select an entry there first.")
+        end
+    end)
+    WBF.UI.Tooltip(controls.UseSelection, function(tip)
+        tip:SetText("Use Current Selection", 1, 0.82, 0.45)
+        WBF.UI.AddTip(tip, "Fills the box with what's selected in the open Mount Journal, Pet Journal or Achievements window.", WBF.UI.Colors.tipText, true)
     end)
     controls.SourceLabel = Label(root, "GameFontNormal", "Where does it drop?")
     controls.SourceKey = nil
@@ -389,18 +431,6 @@ local function Build(parent)
     -- clients send it through ChatFrameUtil.InsertLink. Uncollected pets, the
     -- usual hunt target, produce no link at all. Read the species straight
     -- from the clicked list button or pet card instead.
-    local function PetLink(speciesID, petID)
-        if petID and C_PetJournal and C_PetJournal.GetBattlePetLink then
-            local link = WBF.Format.PlainString(WBF.Format.SafeCall(C_PetJournal.GetBattlePetLink, petID))
-            if link then return link end
-        end
-        if type(speciesID) ~= "number" or speciesID <= 0 then return nil end
-        local name
-        if C_PetJournal and C_PetJournal.GetPetInfoBySpeciesID then
-            name = WBF.Format.PlainString((WBF.Format.SafeCall(C_PetJournal.GetPetInfoBySpeciesID, speciesID)))
-        end
-        return string.format("|cffffd200|Hbattlepet:%d:1:0:0:0:0:0000000000000000|h[%s]|h|r", speciesID, name or ("Pet #" .. speciesID))
-    end
     -- Clicking around the Pet Journal can take focus from the hunt box, and an
     -- uncollected pet has no chat link to compete with. Take the pet whenever
     -- the Add Hunt box is on screen, unless the player is typing in chat.
@@ -546,8 +576,8 @@ end
 
 -- Every widget in the right-hand column. Refresh hides them all, then the
 -- flow shows the ones the current view needs.
-local DETAIL_WIDGETS = {"AddHeading", "Back", "TargetLabel", "UseMount", "AddHint", "Input",
-    "UseAchievement", "SourceLabel", "SourceSelect", "Add", "Feedback", "Caution",
+local DETAIL_WIDGETS = {"AddHeading", "Back", "TargetLabel", "UseSelection", "AddHint", "Input",
+    "SourceLabel", "SourceSelect", "Add", "Feedback", "Caution",
     "TargetHeading", "Source", "TargetIcon", "TargetIconBorder", "Toggle", "Remove", "CancelRemove", "Complete",
     "CompletedNote", "CompletedSettings", "GoalLabel", "Goal", "Explain", "ModeLabel", "Mode", "EditCharacters",
     "ShowAll", "StatusHeading", "StatusText", "CharHeading", "UnknownToggle"}
@@ -559,7 +589,7 @@ local function DrawAddForm(width)
     controls.Back:Show()
     flow:Put(controls.AddHeading, 20, 25)
     flow:Put(controls.TargetLabel, 14, 9)
-    controls.AddHint:SetText("Type a mount name and pick it below, Shift-click a bag item or Pet Journal pet, enter an item ID, or use what's selected in the Mount Journal or Achievements window.")
+    controls.AddHint:SetText("Type a mount name and pick it below, Shift-click a bag item or Pet Journal pet, enter an item ID, or use what's selected in the Mount Journal, Pet Journal or Achievements window.")
     flow:Text(controls.AddHint, 8)
     controls.Input:SetWidth(width - 5)
     flow:Put(controls.Input, 25, 6, 5)
@@ -576,10 +606,8 @@ local function DrawAddForm(width)
         end
     end
     flow.y = flow.y + 6
-    local half = math.floor((width - 5 - 9) / 2)
-    controls.UseMount:SetWidth(half)
-    controls.UseAchievement:SetWidth(half)
-    flow:Row({ { controls.UseMount, half }, { controls.UseAchievement, half } }, 27, 18)
+    controls.UseSelection:SetWidth(width - 5)
+    flow:Put(controls.UseSelection, 27, 18)
     flow:Text(controls.SourceLabel, 6)
     controls.SourceSelect:SetWidth(width - 5)
     flow:Put(controls.SourceSelect, 28, 18)

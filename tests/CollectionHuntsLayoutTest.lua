@@ -57,6 +57,8 @@ local WBF = {}
 WBF.UI = {
     Colors = setmetatable({}, { __index = function() return { 1, 1, 1, 1 } end }),
     Hex = function() return "|cffffffff" end,
+    Tooltip = function() end,
+    AddTip = function() end,
     Button = function(_, text, width, height)
         local b = double(width or 100, height or 22)
         b.text = text or ""

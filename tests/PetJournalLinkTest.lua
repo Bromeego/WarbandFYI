@@ -90,6 +90,7 @@ ScrollBoxListMixin = { Event = { OnAcquiredFrame = "OnAcquiredFrame" } }
 local existingButton = double()
 existingButton.dragButton = double(existingButton)
 PetJournal = {
+    IsVisible = function() return false end,
     ScrollBox = {
         ForEachFrame = function(_, fn) fn(existingButton) end,
         RegisterCallback = function(_, event, fn, owner)
@@ -107,6 +108,8 @@ loadAddon("Utils/Format.lua", WBF)
 WBF.UI = {
     Colors = setmetatable({}, { __index = function() return { 1, 1, 1, 1 } end }),
     Hex = function() return "|cffffffff" end,
+    Tooltip = function() end,
+    AddTip = function() end,
     Button = function() return double() end,
     EditBox = function()
         local box = double()
@@ -250,6 +253,41 @@ check("editing the picked name drops the pick", Page.ResolvedTarget() == "Invinc
 input:SetText("49636")
 Page.TargetChanged(false)
 check("a number is read as an item ID", feedback.text == "Item ID 49636", feedback.text)
+
+-- Use Current Selection reads whichever window is open ----------------------------
+
+local use = page.controls.UseSelection
+local function windowDouble(shown)
+    local w = double()
+    w.shown = shown
+    return w
+end
+input:SetText("")
+use:Click()
+check("with no window open the selection button explains itself", feedback.text:find("Open the Mount Journal", 1, true) ~= nil, feedback.text)
+
+PetJournal.IsVisible = function() return true end
+PetJournalPetCard.speciesID = 4321
+use:Click()
+check("the Pet Journal selection fills the box", speciesIn(input.text) == 4321, input.text)
+
+AchievementFrame = windowDouble(true)
+AchievementFrameAchievements_GetSelectedAchievementId = function() return 725 end
+use:Click()
+check("two open windows are not guessed between", feedback.text:find("Close one", 1, true) ~= nil, feedback.text)
+
+PetJournal.IsVisible = function() return false end
+input:SetText("")
+use:Click()
+check("the Achievements selection fills the box", input.text == "achievement:725", input.text)
+
+AchievementFrame = nil
+MountJournal = windowDouble(true)
+MountJournal.selectedMountID = 364
+WBF.CollectionHunts.Mount = function(id) if id == 364 then return { id = 364, name = "Invincible's Reins of Glory" } end end
+use:Click()
+check("the Mount Journal selection picks the mount by name", input.text == "Invincible's Reins of Glory" and Page.ResolvedTarget() == "mount:364", input.text)
+MountJournal = nil
 
 if failures > 0 then
     print(failures .. " pet journal link test(s) failed")
