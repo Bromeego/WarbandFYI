@@ -392,8 +392,17 @@ local function Build(parent)
         if not (root and root:IsVisible() and controls.Input and controls.Input:HasFocus()) then return end
         if not (IsShiftKeyDown and IsShiftKeyDown()) then return end
         if type(button) ~= "table" then return end
-        local petID = button.petID
-        local speciesID = WBF.Format.AsNumber(button.speciesID)
+        -- The icon is a child button (dragButton on list rows, PetInfo on the
+        -- card) that keeps the pet on its parent.
+        local owner = button
+        for _ = 1, 2 do
+            if owner.petID or owner.speciesID or not owner.GetParent then break end
+            local parent = owner:GetParent()
+            if type(parent) ~= "table" then break end
+            owner = parent
+        end
+        local petID = owner.petID
+        local speciesID = WBF.Format.AsNumber(owner.speciesID)
         if not speciesID and petID and C_PetJournal and C_PetJournal.GetPetInfoByPetID then
             speciesID = WBF.Format.AsNumber((WBF.Format.SafeCall(C_PetJournal.GetPetInfoByPetID, petID)))
         end
@@ -406,6 +415,8 @@ local function Build(parent)
         if pcall(button.HookScript, button, "OnClick", TakePetClick) then
             petHooked[button] = true
         end
+        HookPetButton(button.dragButton)
+        HookPetButton(button.PetInfo)
     end
     local petListHooked = false
     local function HookPetJournal()

@@ -16,8 +16,9 @@ local function check(name, condition, detail)
     print("FAIL  " .. name .. (detail and ("  " .. detail) or ""))
 end
 
-local function double()
-    local f = { shown = true, text = "", scripts = {}, hooks = {} }
+local function double(parent)
+    local f = { shown = true, text = "", scripts = {}, hooks = {}, parent = parent }
+    function f:GetParent() return self.parent end
     function f:Show() self.shown = true end
     function f:Hide() self.shown = false end
     function f:IsShown() return self.shown end
@@ -35,7 +36,11 @@ local function double()
     end
     function f:CreateTexture() return double() end
     function f:CreateFontString() return double() end
-    return setmetatable(f, { __index = function() return function() end end })
+    return setmetatable(f, { __index = function(_, key)
+        -- Data fields are nil unless a test sets them, as on real frames.
+        if key == "petID" or key == "speciesID" or key == "dragButton" or key == "PetInfo" then return nil end
+        return function() end
+    end })
 end
 
 local function loadAddon(path, wbf)
@@ -79,6 +84,7 @@ CreateFrame = function() return double() end
 local acquired
 ScrollBoxListMixin = { Event = { OnAcquiredFrame = "OnAcquiredFrame" } }
 local existingButton = double()
+existingButton.dragButton = double(existingButton)
 PetJournal = {
     ScrollBox = {
         ForEachFrame = function(_, fn) fn(existingButton) end,
@@ -88,6 +94,7 @@ PetJournal = {
     },
 }
 PetJournalPetCard = double()
+PetJournalPetCard.PetInfo = double(PetJournalPetCard)
 
 -- Addon -------------------------------------------------------------------------
 
@@ -137,6 +144,11 @@ existingButton:Click()
 check("an uncollected list pet fills the box", speciesIn(input.text) == 4321, input.text)
 check("the uncollected pet link shows its name", input.text:find("[Arfus]", 1, true) ~= nil, input.text)
 
+-- Clicking the pet's icon on the row reads the pet from the row.
+input:SetText("")
+existingButton.dragButton:Click()
+check("the list icon fills the box", speciesIn(input.text) == 4321, input.text)
+
 -- An owned pet uses Blizzard's own battlepet link.
 input:SetText("")
 local later = double()
@@ -151,6 +163,10 @@ input:SetText("")
 PetJournalPetCard.speciesID = 4321
 PetJournalPetCard:Click()
 check("the pet card fills the box", speciesIn(input.text) == 4321, input.text)
+
+input:SetText("")
+PetJournalPetCard.PetInfo:Click()
+check("the pet card icon fills the box", speciesIn(input.text) == 4321, input.text)
 
 -- Newer clients send chat links through ChatFrameUtil.InsertLink.
 input:SetText("")
