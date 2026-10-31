@@ -6,6 +6,8 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 
 ### Changed
 
+- Collection Hunts finds the raid or dungeon boss for most drops on its own. When the Journal says something like *Drop: Siegecrafter Blackfuse, Raid: Siege of Orgrimmar*, WarbandFYI checks the Encounter Journal that this boss is in that raid and uses it as the source. Weekly lockouts then work like any other hunt. Which difficulty drops it isn't checked yet. Hand-maintained sources with special rules, such as Invincible's 25-player Heroic or the Headless Horseman's daily bag, still take priority.
+- Pet hunts count every character as eligible, so they show attempts and appear in the login FYI.
 - Adding a Collection Hunt uses one box for every kind of target. Type a mount name and pick it from the suggestions, Shift-click a bag item or Pet Journal pet, enter an item ID, or click **Use Current Selection** to take what's selected in the open Mount Journal, Pet Journal or Achievements window. The line under the form says what it recognised, such as "Pet: Arfus" or "Mount: Invincible's Reins".
 - Collection Hunts reads where a mount or pet comes from in its Journal entry (for example *Drop: Headless Horseman, Zone: Scarlet Monastery*) and picks the matching raid or boss automatically. Only bosses WarbandFYI already supports are chosen. Anything else shows the Journal text and asks you to pick.
 - The Add Hunt form is tidier: mount suggestions show their icon with an **Owned** tag, the source and Add Hunt buttons span the form, Add Hunt stays disabled until something is entered, and dropdowns use an arrow instead of a trailing "v".

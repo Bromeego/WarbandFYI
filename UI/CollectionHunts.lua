@@ -702,10 +702,14 @@ function Page.TargetChanged(userInput)
         end
         local notes = { message ~= "" and message or nil }
         notes[#notes + 1] = MUTED .. "Journal: " .. table.concat(parts, ", ") .. "|r"
-        if sourceKey then
+        local chosen = sourceKey and WBF.CollectionHunts.Source(sourceKey)
+        if chosen and chosen.fromJournal then
+            notes[#notes + 1] = SUCCESS .. "Found in the Encounter Journal. Check it before adding.|r"
+                .. "\n" .. MUTED .. "Which difficulty drops it isn't checked.|r"
+        elseif sourceKey then
             notes[#notes + 1] = SUCCESS .. "Source chosen automatically. Check it before adding.|r"
         else
-            notes[#notes + 1] = WARNING .. "This source isn't supported yet. Choose one below if it fits.|r"
+            notes[#notes + 1] = WARNING .. "No raid or dungeon boss found for this source. Choose one below if it fits.|r"
         end
         message = table.concat(notes, "\n")
     end

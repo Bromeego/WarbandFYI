@@ -129,6 +129,10 @@ C_PetJournal = {
             return "Arfus", 12345, 4, nil, "|cFFFFD200Drop:|r Headless Horseman|n|cFFFFD200Zone:|r Scarlet Monastery"
         end
         if speciesID == 99 then return "Lost Kitten", 1, 1, nil, "|cFFFFD200Vendor:|r Breanni|n|cFFFFD200Zone:|r Dalaran" end
+        if speciesID == 1178 then
+            return "Blackfuse Bombling", 1, 10, nil, "|cFFFFD200Drop:|r Siegecrafter Blackfuse|n|cFFFFD200Raid:|r Siege of Orgrimmar"
+        end
+        if speciesID == 1179 then return "Wrong Place", 1, 10, nil, "Drop: Siegecrafter Blackfuse|nRaid: Throne of Thunder" end
     end,
     GetNumCollectedInfo = function() return petsOwned, 3 end,
 }
@@ -174,6 +178,50 @@ check("a boss and its instance pick that source", (Hunts.SourceFromText("Drop: O
 check("a boss name with odd punctuation still matches", (Hunts.SourceFromText("Drop: Al'Akir")) == "southwind")
 check("a zone alone does not pick a boss", Hunts.SourceFromText("Zone: Icecrown Citadel") == nil)
 check("no source text gives nothing", Hunts.JournalSource("pet", 12) == nil)
+
+-- Encounter Journal sources: a boss confirmed inside its raid becomes a source.
+local ejTier = 9
+local EJ = {
+    [5] = { raids = { { 362, "Throne of Thunder", { "Jin'rokh the Breaker", "Ji-Kun" } } } },
+    [6] = { raids = { { 369, "Siege of Orgrimmar", { "Immerseus", "Siegecrafter Blackfuse", "Garrosh Hellscream" } } } },
+}
+EJ_GetNumTiers = function() return 9 end
+EJ_GetCurrentTier = function() return ejTier end
+EJ_SelectTier = function(tier) ejTier = tier end
+EJ_GetInstanceByIndex = function(index, isRaid)
+    local tier = EJ[ejTier]
+    local list = tier and (isRaid and tier.raids or tier.dungeons)
+    local entry = list and list[index]
+    if entry then return entry[1], entry[2] end
+end
+EJ_GetEncounterInfoByIndex = function(index, instanceID)
+    for _, tier in pairs(EJ) do
+        for _, raid in ipairs(tier.raids or {}) do
+            if raid[1] == instanceID and raid[3][index] then
+                return raid[3][index], "", instanceID * 100 + index
+            end
+        end
+    end
+end
+reset()
+local bombKey, bombLines = Hunts.JournalSource("pet", 1178)
+local bombSource = bombKey and Hunts.Source(bombKey)
+check("an Encounter Journal boss becomes a source", bombSource and bombSource.instance == "Siege of Orgrimmar"
+    and bombSource.boss == "Siegecrafter Blackfuse" and bombSource.fromJournal == true, tostring(bombKey))
+check("the journal lines are still returned", #bombLines == 2)
+check("the Encounter Journal tier is put back", ejTier == 9)
+check("a boss in a raid it is not in is not a source", Hunts.JournalSource("pet", 1179) == nil)
+check("an unknown boss is not a source", Hunts.FindEncounter("Not A Boss", "Siege of Orgrimmar") == nil)
+local bomb = Hunts.AddTarget("|cff0070dd|Hbattlepet:1178:1:3:150:10:10:0000000000000000|h[Blackfuse Bombling]|h|r", bombKey)
+check("a pet hunt can use an Encounter Journal source", type(bomb) == "string")
+check("the journal source is saved with the hunts", db.collectionHunts.sources[bombKey] ~= nil)
+check("a pet hunt is eligible on any character", Hunts.Eligibility(bomb, "A") == "eligible")
+db.collectionHunts.lockouts.A = { siegeoforgrimmar = { checkedAt = now, verified = true, bosses = {}, saves = {} } }
+check("a pet from an unkilled raid boss is available", Hunts.Status(bomb, "A") == "available")
+db.collectionHunts.lockouts.A.siegeoforgrimmar.saves = {
+    { difficultyID = 14, expiresAt = now + 3600, bosses = { siegecrafterblackfuse = true } },
+}
+check("a pet from a killed raid boss is done", Hunts.Status(bomb, "A") == "done")
 
 reset()
 check("hunter is not a hunt command", WBF.CollectionHunts.Slash("hunter") == false)
