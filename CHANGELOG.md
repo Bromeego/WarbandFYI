@@ -13,6 +13,7 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 ### Fixed
 
 - Moving the same amount of a currency between the same two characters more than once now records every transfer. Previously any earlier identical transfer hid the new one, and a transfer recorded live on the sending character could hide the receiving side.
+- The warband total on a tracked Notebook item line counts this character and the Warband bank live, so spending or moving items no longer leaves the total stuck at the last scanned amount until the tracker rescans.
 - FYI popups no longer replace each other. When login, event and zone reminders arrive together, each opens in turn as you close the one before. Login reminders that come due during combat now open when combat ends instead of being skipped.
 
 ## 0.2.0-dev.2g — 2026-10-30

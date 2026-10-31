@@ -661,9 +661,17 @@ function WBF.NotebookSmart.Describe(block)
             end
             -- Tracked items (event tokens) know what every alt holds, so the
             -- warband total covers more than this character plus the bank.
+            -- The alts come from their last scan; this character and the bank
+            -- are live, so a spend shows before the tracker rescans.
             local tracked = WBF.Resources and WBF.Resources.ByItemID and WBF.Resources.ByItemID(id) or nil
             local view = tracked and tracked.key and WBF.Resources.NotebookView and WBF.Resources.NotebookView(tracked.key) or nil
-            local total = math.max(view and tonumber(view.amount) or 0, counts.combined or 0)
+            local others = view and tonumber(view.others) or nil
+            local total
+            if others then
+                total = others + (counts.combined or 0)
+            else
+                total = math.max(view and tonumber(view.amount) or 0, counts.combined or 0)
+            end
             if total > (counts.character or 0) then
                 countText = countText .. "  ·  Total " .. tostring(total)
                 countRows[#countRows + 1] = { label = "Total", value = total }
