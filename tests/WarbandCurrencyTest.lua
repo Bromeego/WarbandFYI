@@ -530,6 +530,31 @@ plant(token, now - 19, 50, 250, "gain_observed")
 local keptRoundTrip = WBF.Resources.RepairHistory(true)
 check("one real round trip is not deleted", keptRoundTrip == 0 and movementCount(token) == 2)
 
+-- Loading the tracked resources at startup runs the one-time ledger repair.
+resetDb()
+plant(token, now - 400, 0, 76, "baseline")
+plant(token, now - 70, -204, 29, "loss_observed")
+plant(token, now - 69, 204, 233, "gain_observed")
+plant(token, now - 50, -214, 29, "loss_observed")
+plant(token, now - 49, 214, 243, "gain_observed")
+WBF.Resources.RegisterBus({ On = function() end })
+local startupPlunge = false
+for index = 1, #db.events do
+    local meta = db.events[index].meta or {}
+    if meta.resourceKey == token and meta.balanceAfter == 29 then
+        startupPlunge = true
+    end
+end
+check("startup repair removes the saved plunges", not startupPlunge)
+check("startup repair is recorded as done", db.resources and db.resources.ledgerRepair == 1)
+plant(token, now - 30, -214, 29, "loss_observed")
+plant(token, now - 29, 214, 243, "gain_observed")
+plant(token, now - 20, -214, 29, "loss_observed")
+plant(token, now - 19, 214, 243, "gain_observed")
+local beforeSecond = movementCount(token)
+WBF.Resources.RegisterBus({ On = function() end })
+check("startup repair runs only once", movementCount(token) == beforeSecond)
+
 local cleared = WBF.Resources.ResetHistory("brewfest prize token")
 check("reset finds the resource", cleared and cleared.key == token)
 check("reset removes that resource only", movementCount(token) == 0)
