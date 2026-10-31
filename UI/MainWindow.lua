@@ -90,8 +90,7 @@ function WBF.UI.MainWindow.Create()
     rule:SetPoint("TOPRIGHT", -10, -64)
     rule:SetColorTexture(WBF.UI.Colors.line[1], WBF.UI.Colors.line[2], WBF.UI.Colors.line[3], WBF.UI.Colors.line[4])
 
-    local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
-    close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -2, -2)
+    WBF.UI.CloseButton(frame)
 
     local nav = CreateFrame("Frame", nil, frame)
     nav:SetPoint("TOPLEFT", 8, -70)
@@ -161,7 +160,7 @@ function WBF.UI.MainWindow.Create()
     resourcePanel:SetPoint("TOPRIGHT", content, "TOPRIGHT", 0, 0)
     resourcePanel:SetPoint("BOTTOM", buttons, "TOP", 0, 8)
     resourcePanel:Hide()
-    WBF.UI.Paint(resourcePanel, { 0.045, 0.05, 0.065, 0.98 }, WBF.UI.Colors.goldDim)
+    WBF.UI.Paint(resourcePanel, WBF.UI.Colors.well, WBF.UI.Colors.goldDim)
 
     WBF.UI.BindWheel(scrollChild)
     WBF.UI.BindWheel(dashboardRoot)

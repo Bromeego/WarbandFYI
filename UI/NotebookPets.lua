@@ -55,7 +55,7 @@ function WBF.UI.NotebookPets.Draw(frame, block, width, hideCompleted)
         if not row.Queue then
             row.Queue = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
             row.Queue:SetPoint("TOPLEFT", 40, -35)
-            row.Queue:SetTextColor(0.6, 0.8, 0.65)
+            WBF.UI.SetColor(row.Queue, WBF.UI.Colors.success)
         end
         row.Queue:SetText(pet.queueStatus or "")
         row.Queue:SetWidth(math.max(60, width - 50))
@@ -80,10 +80,10 @@ function WBF.UI.NotebookPets.Draw(frame, block, width, hideCompleted)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:SetText(name, 1, 0.82, 0.45)
             GameTooltip:AddLine(pet.detail, 1, 1, 1)
-            if pet.queueStatus then GameTooltip:AddLine(pet.queueStatus, 0.6, 0.8, 0.65) end
-            if petID then GameTooltip:AddLine(petID, 0.7, 0.7, 0.7) end
+            if pet.queueStatus then WBF.UI.AddTip(GameTooltip, pet.queueStatus, WBF.UI.Colors.success) end
+            if petID then WBF.UI.AddTip(GameTooltip, petID, WBF.UI.Colors.tipFaint) end
             if not petID then GameTooltip:AddLine("Add this species again to choose the copy to level.", 1, 1, 1, true) end
-            GameTooltip:AddLine("Click: Pet Journal  |  Right-click: remove", 0.7, 0.7, 0.7)
+            WBF.UI.AddTip(GameTooltip, "Click: Pet Journal  |  Right-click: remove", WBF.UI.Colors.tipFaint)
             GameTooltip:Show()
         end)
         row:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -122,7 +122,7 @@ local function DrawResults(query)
             row:SetScript("OnEnter", function(self)
                 GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
                 GameTooltip:SetText(pet.name)
-                GameTooltip:AddLine(pet.petID, 0.7, 0.7, 0.7)
+                WBF.UI.AddTip(GameTooltip, pet.petID, WBF.UI.Colors.tipFaint)
                 GameTooltip:AddLine("Level " .. pet.level .. " / 25", 1, 1, 1)
                 GameTooltip:Show()
             end)

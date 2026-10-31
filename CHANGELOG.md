@@ -4,6 +4,11 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 
 ## Unreleased
 
+### Changed
+
+- Close buttons on the main window, the Notebook sheet, the FYI popup and its windows, and the Settings copy dialog now match the WarbandFYI theme instead of Blizzard's red X.
+- Hover, selected and pressed states, row highlights and tooltip text use one consistent set of colours across every page, so the same kind of thing looks the same everywhere.
+
 ## 0.2.0-dev.2h — 2026-10-31
 
 ### Changed

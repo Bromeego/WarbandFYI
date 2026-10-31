@@ -140,7 +140,9 @@ CreateFrame = function(_, _, parent) return frame(parent) end
 UIParent = frame()
 WBF.UI = {
     Paint = function() end,
-    Colors = { gold = { 1, 0.8, 0.4 } },
+    Colors = { gold = { 1, 0.8, 0.4 }, success = { 0.47, 0.89, 0.61 }, tipFaint = { 0.7, 0.7, 0.7 } },
+    SetColor = function() end,
+    AddTip = function() end,
     Button = function(parent, text)
         local b = frame(parent)
         b:SetText(text)

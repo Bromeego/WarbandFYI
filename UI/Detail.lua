@@ -32,7 +32,7 @@ local function RowPool()
         WBF.UI.BindWheel(frame)
         local highlight = frame:CreateTexture(nil, "HIGHLIGHT")
         highlight:SetAllPoints()
-        highlight:SetColorTexture(1, 1, 1, 0.04)
+        WBF.UI.SetColor(highlight, WBF.UI.Colors.highlight)
         local icon = frame:CreateTexture(nil, "ARTWORK")
         icon:SetSize(28, 28)
         icon:SetPoint("TOPLEFT", 8, -8)
@@ -84,7 +84,7 @@ local function RowPool()
                 self.Title:SetText(row.title or "")
                 self.Title:SetTextColor(ColorOf(row.titleColor or "muted", WBF.UI.Colors.muted))
                 self:SetHeight(20)
-                WBF.UI.Paint(self, { 0, 0, 0, 0 }, { 0, 0, 0, 0 })
+                WBF.UI.Paint(self, WBF.UI.Colors.clear, WBF.UI.Colors.clear)
                 self:SetScript("OnEnter", nil)
                 self:SetScript("OnLeave", nil)
                 self:SetScript("OnMouseDown", nil)
@@ -168,7 +168,7 @@ local function RowPool()
             if row.card then
                 WBF.UI.PaintCard(self, "idle")
             else
-                WBF.UI.Paint(self, { 0, 0, 0, 0 }, { 0, 0, 0, 0 })
+                WBF.UI.Paint(self, WBF.UI.Colors.clear, WBF.UI.Colors.clear)
             end
 
             local collectionKind = row.collectionKind
@@ -194,13 +194,13 @@ local function RowPool()
                         for index = 1, #row.lines do
                             local line = row.lines[index]
                             if line.text then
-                                GameTooltip:AddLine(line.text, 0.8, 0.8, 0.8, true)
+                                WBF.UI.AddTip(GameTooltip, line.text, WBF.UI.Colors.tipDetail, true)
                             end
                         end
                     end
                 end
                 if row.detail then
-                    GameTooltip:AddLine("Click to see the records.", 0.9, 0.82, 0.45)
+                    WBF.UI.AddTip(GameTooltip, "Click to see the records.", WBF.UI.Colors.gold)
                 end
                 GameTooltip:Show()
             end)

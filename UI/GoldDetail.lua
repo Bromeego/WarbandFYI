@@ -260,10 +260,10 @@ local function DrawGraph(plot, model, width, height)
                 GameTooltip:AddLine("Change: " .. Money(p.delta, true), c[1], c[2], c[3])
             end
             if p.name and p.name ~= "" then
-                GameTooltip:AddLine(p.name, 0.85, 0.85, 0.85)
+                WBF.UI.AddTip(GameTooltip, p.name, WBF.UI.Colors.tipDetail)
             end
             if p.source == "betweenSessions" then
-                GameTooltip:AddLine("Changed between sessions", 0.7, 0.7, 0.7)
+                WBF.UI.AddTip(GameTooltip, "Changed between sessions", WBF.UI.Colors.tipFaint)
             end
             GameTooltip:Show()
         end)

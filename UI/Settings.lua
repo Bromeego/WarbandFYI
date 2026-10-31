@@ -106,13 +106,12 @@ local function ShowCopyDialog(titleText, value)
         hint:SetText("Text is selected automatically. Press Ctrl+C to copy it, then keep it somewhere safe.")
         Color(hint, WBF.UI.Colors.muted)
 
-        local close = CreateFrame("Button", nil, dialog, "UIPanelCloseButton")
-        close:SetPoint("TOPRIGHT", -4, -4)
+        WBF.UI.CloseButton(dialog)
 
         local panel = CreateFrame("Frame", nil, dialog, "BackdropTemplate")
         panel:SetPoint("TOPLEFT", 16, -62)
         panel:SetPoint("BOTTOMRIGHT", -16, 46)
-        WBF.UI.Paint(panel, { 0.025, 0.03, 0.04, 0.98 }, WBF.UI.Colors.goldDim)
+        WBF.UI.Paint(panel, WBF.UI.Colors.panel, WBF.UI.Colors.goldDim)
 
         local scrollFrame = CreateFrame("ScrollFrame", nil, panel)
         scrollFrame:SetPoint("TOPLEFT", 8, -8)

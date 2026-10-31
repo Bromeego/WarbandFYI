@@ -31,7 +31,65 @@ WBF.UI.Colors = {
     buttonHover = { 0.96, 0.80, 0.42, 0.12 },
     buttonDisabled = { 0.07, 0.07, 0.08, 0.9 },
     edgeDisabled = { 0.30, 0.30, 0.32, 0.8 },
+    -- Card and row states.
+    cardHover = { 0.11, 0.12, 0.15, 0.98 },
+    cardHoverEdge = { 0.96, 0.84, 0.50, 0.95 },
+    cardPressed = { 0.14, 0.11, 0.07, 0.98 },
+    selected = { 0.11, 0.10, 0.06, 0.98 },
+    row = { 0.05, 0.055, 0.07, 0.92 },
+    -- Surfaces, darkest last: dialogs and dropdowns, portrait and graph insets.
+    panel = { 0.025, 0.03, 0.04, 0.98 },
+    inset = { 0.02, 0.02, 0.03, 1 },
+    edgeQuiet = { 0.34, 0.30, 0.20, 0.9 },
+    clear = { 0, 0, 0, 0 },
+    -- Mouse-over wash on list rows and buttons.
+    highlight = { 1, 1, 1, 0.05 },
+    -- Navigation rail, idle and hovered.
+    navText = { 0.72, 0.74, 0.78 },
+    navIcon = { 0.70, 0.72, 0.76 },
+    navIconHover = { 0.85, 0.85, 0.88 },
+    navIconActive = { 1.00, 0.90, 0.65 },
+    choiceText = { 0.78, 0.76, 0.68 },
+    -- Tooltip text. Headings and click hints use gold.
+    tipText = { 0.90, 0.90, 0.90 },
+    tipDetail = { 0.80, 0.80, 0.80 },
+    tipFaint = { 0.70, 0.70, 0.70 },
 }
+
+-- One type scale for text drawn larger or smaller than its font object.
+WBF.UI.FontSizes = {
+    small = 12,
+    body = 14,
+    value = 16,
+    stat = 17,
+    heading = 18,
+    hero = 32,
+}
+
+-- Sets a font string to a size from WBF.UI.FontSizes (or a number), keeping
+-- the face of the given font object, with the shared drop shadow.
+function WBF.UI.SetFontSize(fontString, object, size)
+    local font = object and object:GetFont()
+    size = WBF.UI.FontSizes[size] or size
+    if font and size then
+        fontString:SetFont(font, size, "")
+    end
+    fontString:SetShadowColor(0, 0, 0, 0.8)
+    fontString:SetShadowOffset(1, -1)
+end
+
+-- Color for a texture region or font string from a palette entry.
+function WBF.UI.SetColor(region, color)
+    if region.SetColorTexture then
+        region:SetColorTexture(color[1], color[2], color[3], color[4] or 1)
+    else
+        region:SetTextColor(color[1], color[2], color[3], color[4] or 1)
+    end
+end
+
+function WBF.UI.AddTip(tooltip, text, color, wrap)
+    tooltip:AddLine(text, color[1], color[2], color[3], wrap)
+end
 
 -- "|cffrrggbb" for a palette color, for text built with inline color codes.
 function WBF.UI.Hex(color)
@@ -55,9 +113,9 @@ end
 
 function WBF.UI.PaintCard(frame, state)
     if state == "pressed" then
-        WBF.UI.Paint(frame, { 0.14, 0.11, 0.07, 0.98 }, WBF.UI.Colors.gold)
+        WBF.UI.Paint(frame, WBF.UI.Colors.cardPressed, WBF.UI.Colors.gold)
     elseif state == "hover" then
-        WBF.UI.Paint(frame, { 0.11, 0.12, 0.15, 0.98 }, { 0.96, 0.84, 0.50, 0.95 })
+        WBF.UI.Paint(frame, WBF.UI.Colors.cardHover, WBF.UI.Colors.cardHoverEdge)
     else
         WBF.UI.Paint(frame, WBF.UI.Colors.card, WBF.UI.Colors.goldDim)
     end
@@ -74,7 +132,7 @@ function WBF.UI.BindCard(frame, data, tooltipBuilder)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             tooltipBuilder(GameTooltip, self)
             if clickable then
-                GameTooltip:AddLine("Click to see the records.", 0.9, 0.82, 0.45)
+                WBF.UI.AddTip(GameTooltip, "Click to see the records.", WBF.UI.Colors.gold)
             end
             GameTooltip:Show()
         end
@@ -259,6 +317,47 @@ function WBF.UI.EditBox(parent, width, height)
         self:HighlightText(0, 0)
     end)
     return edit
+end
+
+-- Themed replacement for UIPanelCloseButton: a small square with a drawn X,
+-- set into the parent's top-right corner. Clicking hides the parent unless
+-- the caller sets its own OnClick.
+function WBF.UI.CloseButton(parent)
+    local colors = WBF.UI.Colors
+    local button = CreateFrame("Button", nil, parent)
+    button:SetSize(20, 20)
+    button:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -8, -8)
+    StateFill(button, "SetNormalTexture", "GetNormalTexture", colors.button)
+    StateFill(button, "SetPushedTexture", "GetPushedTexture", colors.buttonPressed)
+    StateFill(button, "SetHighlightTexture", "GetHighlightTexture", colors.buttonHover):SetBlendMode("ADD")
+    button.Border = PixelBorder(button, "OVERLAY")
+    local strokes = {}
+    for index, angle in ipairs({ 45, -45 }) do
+        local stroke = button:CreateTexture(nil, "OVERLAY")
+        stroke:SetSize(11, 2)
+        stroke:SetPoint("CENTER", 0, 0)
+        if stroke.SetRotation then
+            stroke:SetRotation(math.rad(angle))
+        end
+        strokes[index] = stroke
+    end
+    local function Tint(mark, edge)
+        for index = 1, #strokes do
+            WBF.UI.SetColor(strokes[index], mark)
+        end
+        PaintBorder(button.Border, edge)
+    end
+    Tint(colors.cream, colors.goldDim)
+    button:HookScript("OnEnter", function()
+        Tint(colors.gold, colors.gold)
+    end)
+    button:HookScript("OnLeave", function()
+        Tint(colors.cream, colors.goldDim)
+    end)
+    button:SetScript("OnClick", function()
+        parent:Hide()
+    end)
+    return button
 end
 
 -- Thin gold scrollbar for a ScrollFrame. Keep it in step with
@@ -540,14 +639,6 @@ function WBF.UI.Tooltip(owner, builder)
     end)
 end
 
-local function Enlarge(fontString, object, delta)
-    local font, size = object:GetFont()
-    if font and size then
-        fontString:SetFont(font, size + delta, "")
-    end
-    fontString:SetShadowColor(0, 0, 0, 0.8)
-    fontString:SetShadowOffset(1, -1)
-end
 
 function WBF.UI.CreatePool(factory)
     return {
@@ -700,13 +791,13 @@ function WBF.UI.EventTooltip(tooltip, event)
         tooltip:AddLine(who, r, g, b)
     end
     if meta.difficultyName and meta.difficultyName ~= "" then
-        tooltip:AddLine(meta.difficultyName, 0.8, 0.8, 0.8)
+        WBF.UI.AddTip(tooltip, meta.difficultyName, WBF.UI.Colors.tipDetail)
     end
     if meta.instanceName and meta.instanceName ~= "" and event.eventType == WBF.EventType.BossKill then
-        tooltip:AddLine(meta.instanceName, 0.8, 0.8, 0.8)
+        WBF.UI.AddTip(tooltip, meta.instanceName, WBF.UI.Colors.tipDetail)
     end
     if meta.timedText then
-        tooltip:AddLine(meta.timedText == "timed" and "Timed" or "Untimed", 0.8, 0.8, 0.8)
+        WBF.UI.AddTip(tooltip, meta.timedText == "timed" and "Timed" or "Untimed", WBF.UI.Colors.tipDetail)
     end
     if event.previous and event.new and (event.eventType == WBF.EventType.ItemLevel or event.eventType == WBF.EventType.Profession or event.eventType == WBF.EventType.Renown) then
         tooltip:AddLine(WBF.Format.Progression(event.previous, event.new), 0.35, 0.95, 0.48)
@@ -714,18 +805,18 @@ function WBF.UI.EventTooltip(tooltip, event)
     if event.eventType == WBF.EventType.Reputation and event.delta then
         tooltip:AddLine(WBF.Format.Signed(event.delta) .. " reputation", 0.35, 0.95, 0.48)
         if meta.accountWide then
-            tooltip:AddLine("Warband reputation", 0.8, 0.8, 0.8)
+            WBF.UI.AddTip(tooltip, "Warband reputation", WBF.UI.Colors.tipDetail)
         end
     end
     if meta.tier and event.eventType == WBF.EventType.Delve then
-        tooltip:AddLine("Tier " .. meta.tier, 0.8, 0.8, 0.8)
+        WBF.UI.AddTip(tooltip, "Tier " .. meta.tier, WBF.UI.Colors.tipDetail)
     end
     if event.eventType == WBF.EventType.RareKill then
         if meta.mapName and meta.mapName ~= "" then
-            tooltip:AddLine(meta.mapName, 0.8, 0.8, 0.8)
+            WBF.UI.AddTip(tooltip, meta.mapName, WBF.UI.Colors.tipDetail)
         end
         if meta.classification and meta.classification ~= "" then
-            tooltip:AddLine(meta.classification, 0.8, 0.8, 0.8)
+            WBF.UI.AddTip(tooltip, meta.classification, WBF.UI.Colors.tipDetail)
         end
     end
     if event.eventType == WBF.EventType.HousingDecor then
@@ -733,25 +824,25 @@ function WBF.UI.EventTooltip(tooltip, event)
             tooltip:AddLine("+" .. WBF.Format.Number(meta.houseXP) .. " House XP", 0.35, 0.95, 0.48)
         end
         if meta.source and meta.source ~= "" then
-            tooltip:AddLine(meta.source, 0.8, 0.8, 0.8)
+            WBF.UI.AddTip(tooltip, meta.source, WBF.UI.Colors.tipDetail)
         elseif meta.location and meta.location ~= "" then
-            tooltip:AddLine(meta.location, 0.8, 0.8, 0.8)
+            WBF.UI.AddTip(tooltip, meta.location, WBF.UI.Colors.tipDetail)
         end
     end
     if event.eventType == WBF.EventType.Appearance then
         if meta.sourceID then
-            tooltip:AddLine("Appearance " .. meta.sourceID, 0.8, 0.8, 0.8)
+            WBF.UI.AddTip(tooltip, "Appearance " .. meta.sourceID, WBF.UI.Colors.tipDetail)
         end
         if meta.instanceName or meta.location then
-            tooltip:AddLine(meta.instanceName or meta.location, 0.8, 0.8, 0.8)
+            WBF.UI.AddTip(tooltip, meta.instanceName or meta.location, WBF.UI.Colors.tipDetail)
         end
     end
     if event.eventType == WBF.EventType.Prey then
         if meta.difficulty and meta.difficulty ~= "" then
-            tooltip:AddLine(meta.difficulty, 0.96, 0.8, 0.42)
+            WBF.UI.AddTip(tooltip, meta.difficulty, WBF.UI.Colors.gold)
         end
         if meta.completed == false then
-            tooltip:AddLine("In progress", 0.8, 0.8, 0.8)
+            WBF.UI.AddTip(tooltip, "In progress", WBF.UI.Colors.tipDetail)
         end
         if meta.journey and meta.journey > 0 then
             tooltip:AddLine((meta.journeyName or "Journey") .. " " .. WBF.Format.Signed(meta.journey), 0.35, 0.95, 0.48)
@@ -759,36 +850,36 @@ function WBF.UI.EventTooltip(tooltip, event)
         if meta.duration and meta.duration > 0 then
             local duration = WBF.Format.Duration(meta.duration)
             if duration then
-                tooltip:AddLine(duration, 0.8, 0.8, 0.8)
+                WBF.UI.AddTip(tooltip, duration, WBF.UI.Colors.tipDetail)
             end
         end
         if meta.objective and meta.objective ~= "" then
-            tooltip:AddLine(meta.objective, 0.8, 0.8, 0.8, true)
+            WBF.UI.AddTip(tooltip, meta.objective, WBF.UI.Colors.tipDetail, true)
         end
     end
     if event.eventType == WBF.EventType.Resource then
         local classification = meta.classification
         if classification == "transfer" then
-            tooltip:AddLine("Transferred. Not counted as earned or spent.", 0.8, 0.8, 0.8, true)
+            WBF.UI.AddTip(tooltip, "Transferred. Not counted as earned or spent.", WBF.UI.Colors.tipDetail, true)
         elseif classification == "baseline" then
-            tooltip:AddLine("Balance when tracking started. Not counted as earned.", 0.8, 0.8, 0.8, true)
+            WBF.UI.AddTip(tooltip, "Balance when tracking started. Not counted as earned.", WBF.UI.Colors.tipDetail, true)
         elseif classification == "sync" then
-            tooltip:AddLine("Already held on another character. Not counted as earned.", 0.8, 0.8, 0.8, true)
+            WBF.UI.AddTip(tooltip, "Already held on another character. Not counted as earned.", WBF.UI.Colors.tipDetail, true)
         elseif classification == "gain_observed" or classification == "loss_observed" then
-            tooltip:AddLine("Change in the total held, including the Warband bank. The source was not recorded.", 0.8, 0.8, 0.8, true)
+            WBF.UI.AddTip(tooltip, "Change in the total held, including the Warband bank. The source was not recorded.", WBF.UI.Colors.tipDetail, true)
         end
         if meta.balanceAfter ~= nil then
-            tooltip:AddLine("Balance " .. WBF.Format.Number(meta.balanceAfter), 0.8, 0.8, 0.8)
+            WBF.UI.AddTip(tooltip, "Balance " .. WBF.Format.Number(meta.balanceAfter), WBF.UI.Colors.tipDetail)
         end
         if meta.eventName and meta.eventName ~= "" then
-            tooltip:AddLine(meta.eventName, 0.96, 0.8, 0.42)
+            WBF.UI.AddTip(tooltip, meta.eventName, WBF.UI.Colors.gold)
         end
     end
     if event.at then
         tooltip:AddLine(WBF.Time.FormatStamp(event.at), 0.62, 0.64, 0.70)
     end
     if event.sample then
-        tooltip:AddLine("Sample history", 0.9, 0.75, 0.35)
+        WBF.UI.AddTip(tooltip, "Sample history", WBF.UI.Colors.gold)
     end
 end
 
@@ -927,7 +1018,7 @@ local function EnsureCollectionPreview()
     frame:SetFrameStrata("TOOLTIP")
     frame:SetClampedToScreen(true)
     frame:EnableMouse(false)
-    WBF.UI.Paint(frame, { 0.025, 0.030, 0.040, 0.985 }, { 0.96, 0.80, 0.42, 0.95 })
+    WBF.UI.Paint(frame, WBF.UI.Colors.panel, WBF.UI.Colors.gold)
 
     local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     title:SetPoint("TOPLEFT", 12, -11)
@@ -946,7 +1037,7 @@ local function EnsureCollectionPreview()
     modelBox:SetPoint("TOPLEFT", 10, -48)
     modelBox:SetPoint("TOPRIGHT", -10, -48)
     modelBox:SetHeight(174)
-    WBF.UI.Paint(modelBox, { 0.008, 0.010, 0.014, 0.95 }, { 0.55, 0.45, 0.24, 0.72 })
+    WBF.UI.Paint(modelBox, { 0.008, 0.010, 0.014, 0.95 }, WBF.UI.Colors.goldDim)
 
     local model = CreateFrame("PlayerModel", nil, modelBox)
     model:SetPoint("TOPLEFT", 2, -2)
@@ -1429,7 +1520,7 @@ local function StatPool()
         value:SetPoint("RIGHT", frame, "RIGHT", -8, 0)
         value:SetJustifyH("LEFT")
         value:SetWordWrap(false)
-        Enlarge(value, GameFontNormalLarge, 1)
+        WBF.UI.SetFontSize(value, GameFontNormalLarge, "stat")
         local label = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         label:SetPoint("TOPLEFT", value, "BOTTOMLEFT", 0, -2)
         label:SetPoint("RIGHT", frame, "RIGHT", -8, 0)
@@ -1465,7 +1556,7 @@ local function StatPool()
             WBF.UI.BindCard(self, data, function(tooltip)
                 tooltip:SetText(data.label, 1, 0.82, 0.45)
                 if data.tooltip then
-                    tooltip:AddLine(data.tooltip, 0.9, 0.9, 0.9, true)
+                    WBF.UI.AddTip(tooltip, data.tooltip, WBF.UI.Colors.tipText, true)
                 end
             end)
         end
@@ -1498,7 +1589,7 @@ local function HighlightPool()
         value:SetJustifyH("LEFT")
         value:SetWordWrap(false)
         value:SetHeight(22)
-        Enlarge(value, GameFontNormalLarge, 0)
+        WBF.UI.SetFontSize(value, GameFontNormalLarge, "value")
         local detail = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         detail:SetPoint("TOPLEFT", value, "BOTTOMLEFT", 0, -2)
         detail:SetPoint("RIGHT", -10, 0)
@@ -1536,7 +1627,7 @@ local function HighlightPool()
                     tooltip:AddLine(data.value, 1, 1, 1)
                 end
                 if data.detail then
-                    tooltip:AddLine(data.detail, 0.8, 0.8, 0.8)
+                    WBF.UI.AddTip(tooltip, data.detail, WBF.UI.Colors.tipDetail)
                 end
             end)
         end
@@ -1557,12 +1648,12 @@ local function CharacterPool()
         WBF.UI.BindWheel(frame)
         local highlight = frame:CreateTexture(nil, "HIGHLIGHT")
         highlight:SetAllPoints()
-        highlight:SetColorTexture(1, 1, 1, 0.04)
+        WBF.UI.SetColor(highlight, WBF.UI.Colors.highlight)
 
         local holder = CreateFrame("Frame", nil, frame, "BackdropTemplate")
         holder:SetSize(50, 50)
         holder:SetPoint("TOPLEFT", 10, -10)
-        WBF.UI.Paint(holder, { 0.02, 0.02, 0.03, 1 }, WBF.UI.Colors.gold)
+        WBF.UI.Paint(holder, WBF.UI.Colors.inset, WBF.UI.Colors.gold)
         local portrait = holder:CreateTexture(nil, "ARTWORK")
         portrait:SetPoint("TOPLEFT", 1, -1)
         portrait:SetPoint("BOTTOMRIGHT", -1, -1)
@@ -1660,7 +1751,7 @@ local function CharacterPool()
             WBF.UI.BindCard(self, payload, function(tooltip)
                 tooltip:SetText(data.name or "Character", WBF.Format.ClassColor(data.classFile))
                 if data.realm and data.realm ~= "" then
-                    tooltip:AddLine(data.realm, 0.7, 0.7, 0.7)
+                    WBF.UI.AddTip(tooltip, data.realm, WBF.UI.Colors.tipFaint)
                 end
             end)
         end
@@ -1731,7 +1822,7 @@ local function TilePool()
                 chevron:Show()
                 value:SetPoint("TOPLEFT", 40, -8)
                 value:SetPoint("RIGHT", -18, 0)
-                Enlarge(value, GameFontNormalLarge, 1)
+                WBF.UI.SetFontSize(value, GameFontNormalLarge, "stat")
                 label:SetPoint("TOPLEFT", value, "BOTTOMLEFT", 0, -1)
                 label:SetPoint("RIGHT", -18, 0)
                 Color(label, WBF.UI.Colors.cream)
@@ -1756,7 +1847,7 @@ local function TilePool()
             else
                 icon:SetSize(18, 18)
                 icon:SetPoint("TOPLEFT", 10, -8)
-                Enlarge(value, GameFontNormalLarge, 0)
+                WBF.UI.SetFontSize(value, GameFontNormalLarge, "value")
                 value:SetPoint("LEFT", icon, "RIGHT", 6, 0)
                 value:SetPoint("RIGHT", -8, 0)
                 chevron:Hide()
@@ -1778,7 +1869,7 @@ local function TilePool()
             WBF.UI.BindCard(self, data, function(tooltip)
                 tooltip:SetText(data.label, 1, 0.82, 0.45)
                 if data.tooltip then
-                    tooltip:AddLine(data.tooltip, 0.9, 0.9, 0.9, true)
+                    WBF.UI.AddTip(tooltip, data.tooltip, WBF.UI.Colors.tipText, true)
                 end
             end)
         end
@@ -1798,7 +1889,7 @@ local function ActivityPool()
         WBF.UI.BindWheel(frame)
         local highlight = frame:CreateTexture(nil, "HIGHLIGHT")
         highlight:SetAllPoints()
-        highlight:SetColorTexture(1, 1, 1, 0.04)
+        WBF.UI.SetColor(highlight, WBF.UI.Colors.highlight)
         local timeText = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         timeText:SetPoint("LEFT", 0, 0)
         timeText:SetWidth(58)
@@ -1826,7 +1917,7 @@ local function ActivityPool()
             WBF.UI.Tooltip(self, function(tooltip)
                 WBF.UI.EventTooltip(tooltip, event)
                 if category then
-                    tooltip:AddLine("Click to see the records.", 0.9, 0.82, 0.45)
+                    WBF.UI.AddTip(tooltip, "Click to see the records.", WBF.UI.Colors.gold)
                 end
             end)
             if category then
@@ -1878,11 +1969,11 @@ local function RosterPool()
         WBF.UI.BindWheel(frame)
         local highlight = frame:CreateTexture(nil, "HIGHLIGHT")
         highlight:SetAllPoints()
-        highlight:SetColorTexture(1, 1, 1, 0.04)
+        WBF.UI.SetColor(highlight, WBF.UI.Colors.highlight)
         local holder = CreateFrame("Frame", nil, frame, "BackdropTemplate")
         holder:SetSize(40, 40)
         holder:SetPoint("LEFT", 8, 0)
-        WBF.UI.Paint(holder, { 0.02, 0.02, 0.03, 1 }, WBF.UI.Colors.gold)
+        WBF.UI.Paint(holder, WBF.UI.Colors.inset, WBF.UI.Colors.gold)
         local portrait = holder:CreateTexture(nil, "ARTWORK")
         portrait:SetPoint("TOPLEFT", 1, -1)
         portrait:SetPoint("BOTTOMRIGHT", -1, -1)
