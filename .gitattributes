@@ -1,0 +1,7 @@
+# Keep LF line endings in the repo and working tree, whatever the editor.
+* text=auto eol=lf
+
+# Binary media.
+*.tga binary
+*.blp binary
+*.png binary
