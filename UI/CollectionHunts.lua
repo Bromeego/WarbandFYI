@@ -372,21 +372,78 @@ local function Build(parent)
         end)
         achievementHooked = true
     end
+    -- Pet Journal Shift-clicks only make a chat link for owned pets, and newer
+    -- clients send it through ChatFrameUtil.InsertLink. Uncollected pets, the
+    -- usual hunt target, produce no link at all. Read the species straight
+    -- from the clicked list button or pet card instead.
+    local function PetLink(speciesID, petID)
+        if petID and C_PetJournal and C_PetJournal.GetBattlePetLink then
+            local link = WBF.Format.PlainString(WBF.Format.SafeCall(C_PetJournal.GetBattlePetLink, petID))
+            if link then return link end
+        end
+        if type(speciesID) ~= "number" or speciesID <= 0 then return nil end
+        local name
+        if C_PetJournal and C_PetJournal.GetPetInfoBySpeciesID then
+            name = WBF.Format.PlainString((WBF.Format.SafeCall(C_PetJournal.GetPetInfoBySpeciesID, speciesID)))
+        end
+        return string.format("|cffffd200|Hbattlepet:%d:1:0:0:0:0:0000000000000000|h[%s]|h|r", speciesID, name or ("Pet #" .. speciesID))
+    end
+    local function TakePetClick(button)
+        if not (root and root:IsVisible() and controls.Input and controls.Input:HasFocus()) then return end
+        if not (IsShiftKeyDown and IsShiftKeyDown()) then return end
+        if type(button) ~= "table" then return end
+        local petID = button.petID
+        local speciesID = WBF.Format.AsNumber(button.speciesID)
+        if not speciesID and petID and C_PetJournal and C_PetJournal.GetPetInfoByPetID then
+            speciesID = WBF.Format.AsNumber((WBF.Format.SafeCall(C_PetJournal.GetPetInfoByPetID, petID)))
+        end
+        local link = PetLink(speciesID, petID)
+        if link then InsertLink(link) end
+    end
+    local petHooked = {}
+    local function HookPetButton(button)
+        if type(button) ~= "table" or petHooked[button] or not button.HookScript then return end
+        if pcall(button.HookScript, button, "OnClick", TakePetClick) then
+            petHooked[button] = true
+        end
+    end
+    local petListHooked = false
+    local function HookPetJournal()
+        if petListHooked or not PetJournal then return end
+        petListHooked = true
+        HookPetButton(PetJournalPetCard)
+        local scrollBox = PetJournal.ScrollBox
+        if scrollBox then
+            if scrollBox.ForEachFrame then
+                pcall(scrollBox.ForEachFrame, scrollBox, HookPetButton)
+            end
+            if scrollBox.RegisterCallback and ScrollBoxListMixin and ScrollBoxListMixin.Event and ScrollBoxListMixin.Event.OnAcquiredFrame then
+                pcall(scrollBox.RegisterCallback, scrollBox, ScrollBoxListMixin.Event.OnAcquiredFrame, function(_, frame)
+                    HookPetButton(frame)
+                end, root)
+            end
+        end
+    end
     if hooksecurefunc then
         if type(HandleModifiedItemClick) == "function" then
             hooksecurefunc("HandleModifiedItemClick", InsertLink)
+        end
+        if ChatFrameUtil and type(ChatFrameUtil.InsertLink) == "function" then
+            hooksecurefunc(ChatFrameUtil, "InsertLink", InsertLink)
         end
         if type(ChatEdit_InsertLink) == "function" then
             hooksecurefunc("ChatEdit_InsertLink", InsertLink)
         end
     end
     HookAchievementButtons()
+    HookPetJournal()
     -- Blizzard_AchievementUI is load-on-demand. Installing its hook only at
     -- Collection Hunts page creation misses it when achievements open later.
     local loadWatcher = CreateFrame("Frame")
     loadWatcher:RegisterEvent("ADDON_LOADED")
     loadWatcher:SetScript("OnEvent", function(_, _, addonName)
         if addonName == "Blizzard_AchievementUI" then HookAchievementButtons() end
+        if addonName == "Blizzard_Collections" then HookPetJournal() end
     end)
     -- When a user opens achievements after this page was built, the click
     -- handler is then installed even when no achievement window existed yet.
