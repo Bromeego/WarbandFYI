@@ -196,14 +196,16 @@ local function ResourceWidgets(summary)
         local current = resource.current
         local detail
         local periodName = summary.periodPhrase or (summary.label and summary.label:lower()) or "this period"
-        local tooltip = "Net " .. WBF.Format.Signed(net) .. " " .. periodName .. "."
+        local rows = {
+            { label = "Net " .. periodName, value = WBF.Format.Signed(net), color = color },
+        }
         if type(current) == "number" then
             if summary.closed then
                 detail = WBF.Format.Number(current) .. " at period end"
-                tooltip = tooltip .. "  Balance at the end of this period " .. WBF.Format.Number(current) .. "."
+                rows[#rows + 1] = { label = "Balance at period end", value = WBF.Format.Number(current), color = WBF.UI.Colors.cream }
             else
                 detail = WBF.Format.Number(current) .. " current"
-                tooltip = tooltip .. "  Current balance " .. WBF.Format.Number(current) .. "."
+                rows[#rows + 1] = { label = "Current balance", value = WBF.Format.Number(current), color = WBF.UI.Colors.cream }
             end
         end
         local subline
@@ -214,9 +216,9 @@ local function ResourceWidgets(summary)
                 .. WBF.UI.ColorText(WBF.UI.Colors.red, WBF.Format.Signed(-spent) .. " spent")
         end
         if earned > 0 or spent > 0 then
-            tooltip = tooltip .. "  Earned " .. WBF.Format.Signed(earned) .. "."
+            rows[#rows + 1] = { label = "Earned", value = WBF.Format.Signed(earned), color = WBF.UI.Colors.green }
             if spent > 0 then
-                tooltip = tooltip .. "  Spent " .. WBF.Format.Signed(-spent) .. "."
+                rows[#rows + 1] = { label = "Spent", value = WBF.Format.Signed(-spent), color = WBF.UI.Colors.red }
             end
         end
         widgets[#widgets + 1] = {
@@ -229,7 +231,7 @@ local function ResourceWidgets(summary)
             color = color,
             texture = resource.texture,
             fallback = "Interface\\Icons\\INV_Misc_Coin_01",
-            tooltip = tooltip,
+            tooltipRows = rows,
             open = "resource",
             resourceKey = resource.key,
             -- The Warband dashboard is an all-time aggregate, not a useful

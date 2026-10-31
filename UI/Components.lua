@@ -91,6 +91,19 @@ function WBF.UI.AddTip(tooltip, text, color, wrap)
     tooltip:AddLine(text, color[1], color[2], color[3], wrap)
 end
 
+-- One "label ... value" row per entry, label on the left in tooltip text
+-- colour and the value right-aligned in its own colour.
+function WBF.UI.AddTipRows(tooltip, rows)
+    local label = WBF.UI.Colors.tipText
+    for index = 1, #rows do
+        local row = rows[index]
+        local color = row.color or label
+        tooltip:AddDoubleLine(row.label, row.value,
+            label[1], label[2], label[3],
+            color[1], color[2], color[3])
+    end
+end
+
 -- "|cffrrggbb" for a palette color, for text built with inline color codes.
 function WBF.UI.Hex(color)
     return string.format(
@@ -1555,6 +1568,9 @@ local function StatPool()
             end
             WBF.UI.BindCard(self, data, function(tooltip)
                 tooltip:SetText(data.label, 1, 0.82, 0.45)
+                if data.tooltipRows then
+                    WBF.UI.AddTipRows(tooltip, data.tooltipRows)
+                end
                 if data.tooltip then
                     WBF.UI.AddTip(tooltip, data.tooltip, WBF.UI.Colors.tipText, true)
                 end
@@ -1868,6 +1884,9 @@ local function TilePool()
             end
             WBF.UI.BindCard(self, data, function(tooltip)
                 tooltip:SetText(data.label, 1, 0.82, 0.45)
+                if data.tooltipRows then
+                    WBF.UI.AddTipRows(tooltip, data.tooltipRows)
+                end
                 if data.tooltip then
                     WBF.UI.AddTip(tooltip, data.tooltip, WBF.UI.Colors.tipText, true)
                 end
