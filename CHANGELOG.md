@@ -4,6 +4,12 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 
 ## Unreleased
 
+### Changed
+
+- The Collection Hunts page lays out its detail column top to bottom: target, actions, collection goal, farming characters, this week's status, then the character lists. Sections no longer overlap, and the page uses the full window width when it is wider.
+- The selected hunt in the list is highlighted, and hunt icons no longer disappear behind the button.
+- Empty pages now explain what will show up and how to get started: Activity, the Dashboard, detail pages, Pet Battles and Collection Hunts with no hunts.
+
 ### Fixed
 
 - FYI popups no longer replace each other. When login, event and zone reminders arrive together, each opens in turn as you close the one before. Login reminders that come due during combat now open when combat ends instead of being skipped.

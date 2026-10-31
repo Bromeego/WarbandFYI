@@ -12,7 +12,6 @@ local noteText
 local headlineLabel
 local headlineText
 local footerText
-local emptyText
 
 local function ColorOf(color, fallback)
     if type(color) == "table" then
@@ -299,11 +298,6 @@ function WBF.UI.Detail.Attach(parent)
     footerText = root:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     footerText:SetJustifyH("LEFT")
     footerText:SetTextColor(WBF.UI.Colors.muted[1], WBF.UI.Colors.muted[2], WBF.UI.Colors.muted[3])
-
-    emptyText = root:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    emptyText:SetJustifyH("LEFT")
-    emptyText:SetWordWrap(true)
-    emptyText:SetTextColor(WBF.UI.Colors.muted[1], WBF.UI.Colors.muted[2], WBF.UI.Colors.muted[3])
 end
 
 function WBF.UI.Detail.HideChrome()
@@ -330,9 +324,6 @@ function WBF.UI.Detail.HideChrome()
     end
     if footerText then
         footerText:Hide()
-    end
-    if emptyText then
-        emptyText:Hide()
     end
 end
 
@@ -502,14 +493,10 @@ function WBF.UI.Detail.Render(model, width)
 
     local hasBody = anyRow or columnRows or (model.facts and #model.facts > 0) or (model.headline and model.headline ~= "")
     if not hasBody then
-        emptyText:ClearAllPoints()
-        emptyText:SetPoint("TOPLEFT", root, "TOPLEFT", 0, -(y + 8))
-        emptyText:SetWidth(math.min(520, width))
-        emptyText:SetText(model.empty or "Nothing recorded for this period.")
-        emptyText:Show()
-        return y + 64
+        local height = WBF.UI.PlaceEmptyState(root, 0, y + 8, math.min(560, width), "Nothing recorded yet",
+            model.empty or "Nothing was recorded for this period. Try a longer period, or check back after you play.")
+        return y + 8 + height + 16
     end
-    emptyText:Hide()
     if not anyRow then
         return y + 8
     end

@@ -309,6 +309,80 @@ function WBF.UI.SyncScrollBar(scroll, bar)
     bar.updating = false
 end
 
+local function StringHeight(fontString)
+    local height = fontString:GetStringHeight() or 0
+    return math.max(12, math.ceil(height))
+end
+
+-- A page or panel with nothing to show: an icon, a heading and a hint that
+-- says what to do next. Pooled pages use WBF.UI.Pool("emptyState", WBF.UI.EmptyState).
+function WBF.UI.EmptyState(parent)
+    local colors = WBF.UI.Colors
+    local frame = CreateFrame("Frame", nil, parent, "BackdropTemplate")
+    WBF.UI.Paint(frame, colors.card, colors.line)
+    local icon = frame:CreateTexture(nil, "ARTWORK")
+    icon:SetSize(28, 28)
+    icon:SetAlpha(0.85)
+    local heading = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    heading:SetJustifyH("CENTER")
+    heading:SetTextColor(colors.gold[1], colors.gold[2], colors.gold[3])
+    local body = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    body:SetJustifyH("CENTER")
+    body:SetWordWrap(true)
+    body:SetTextColor(colors.muted[1], colors.muted[2], colors.muted[3])
+    frame.Icon = icon
+    frame.Heading = heading
+    frame.Body = body
+
+    function frame:Set(headingText, bodyText, atlases, fallback)
+        self.Heading:SetText(headingText or "")
+        self.Body:SetText(bodyText or "")
+        self.hasIcon = atlases ~= nil or fallback ~= nil
+        if self.hasIcon then
+            WBF.UI.SetAtlasChain(self.Icon, atlases, fallback)
+        end
+        self.Icon:SetShown(self.hasIcon)
+        return self
+    end
+
+    -- Sizes the block to width and returns its height.
+    function frame:Layout(width)
+        local textWidth = math.max(80, math.min(width - 32, 460))
+        local y = 16
+        self.Icon:ClearAllPoints()
+        if self.hasIcon then
+            self.Icon:SetPoint("TOP", self, "TOP", 0, -y)
+            y = y + 28 + 8
+        end
+        self.Heading:ClearAllPoints()
+        self.Heading:SetPoint("TOP", self, "TOP", 0, -y)
+        self.Heading:SetWidth(textWidth)
+        y = y + StringHeight(self.Heading)
+        local hasBody = (self.Body:GetText() or "") ~= ""
+        self.Body:ClearAllPoints()
+        self.Body:SetShown(hasBody)
+        if hasBody then
+            self.Body:SetPoint("TOP", self, "TOP", 0, -(y + 6))
+            self.Body:SetWidth(textWidth)
+            y = y + 6 + StringHeight(self.Body)
+        end
+        y = y + 16
+        self:SetSize(width, y)
+        return y
+    end
+
+    return frame
+end
+
+-- Pooled empty state at (x, y) in parent; released with WBF.UI.ReleaseAll.
+-- Returns its height.
+function WBF.UI.PlaceEmptyState(parent, x, y, width, heading, body, atlases, fallback)
+    local state = WBF.UI.Acquire(WBF.UI.Pool("emptyState", WBF.UI.EmptyState), parent)
+    state:Set(heading, body, atlases, fallback)
+    state:SetPoint("TOPLEFT", parent, "TOPLEFT", x, -y)
+    return state:Layout(width)
+end
+
 function WBF.UI.SetAtlasChain(texture, atlases, fallback)
     if atlases and C_Texture and C_Texture.GetAtlasInfo then
         for index = 1, #atlases do
