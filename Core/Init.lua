@@ -382,6 +382,9 @@ frame:SetScript("OnEvent", function(_, event, ...)
         if WBF.NotebookFyi and WBF.NotebookFyi.OnRegen then
             WBF.NotebookFyi.OnRegen()
         end
+        if WBF.Notebook and WBF.Notebook.OnRegen then
+            WBF.Notebook.OnRegen()
+        end
         if WBF.ContextFyi and WBF.ContextFyi.OnRegen then
             WBF.ContextFyi.OnRegen()
         end

@@ -86,6 +86,58 @@ function WBF.Notebook.RefreshOpen()
     refreshing = false
 end
 
+-- Game events (bag and currency changes, achievement criteria) can arrive in
+-- bursts. Coalesce them into one pass shortly after, and hold it until combat
+-- ends. The player's own edits still call RefreshOpen for an instant redraw.
+-- withWindow false refreshes only the floating FYI.
+local REFRESH_DELAY = 0.2
+local pendingWindow = false
+local pendingAny = false
+local refreshQueued = false
+
+local function FlushRequested()
+    if not pendingAny then
+        return
+    end
+    if InCombatLockdown and InCombatLockdown() then
+        return
+    end
+    local withWindow = pendingWindow
+    pendingAny = false
+    pendingWindow = false
+    if withWindow then
+        WBF.Notebook.RefreshOpen()
+    elseif WBF.UI and WBF.UI.Fyi and WBF.UI.Fyi.Refresh then
+        local ok, err = pcall(WBF.UI.Fyi.Refresh)
+        if not ok and WBF.Debug and WBF.Debug.Log then
+            WBF.Debug.Log("FYI refresh failed", err)
+        end
+    end
+end
+
+function WBF.Notebook.RequestRefreshOpen(withWindow)
+    pendingAny = true
+    if withWindow ~= false then
+        pendingWindow = true
+    end
+    if refreshQueued then
+        return
+    end
+    if not (C_Timer and C_Timer.After) then
+        FlushRequested()
+        return
+    end
+    refreshQueued = true
+    C_Timer.After(REFRESH_DELAY, function()
+        refreshQueued = false
+        FlushRequested()
+    end)
+end
+
+function WBF.Notebook.OnRegen()
+    FlushRequested()
+end
+
 local function Save(value)
     WBF.Notebook.RefreshOpen()
     return value
