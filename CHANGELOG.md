@@ -4,6 +4,10 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 
 ## Unreleased
 
+### Changed
+
+- Dashboard currency tooltips list each figure on its own line, with the label on the left and the value on the right: net for the period, current balance, earned and spent, each in its own colour.
+
 ## 0.2.0-dev.2i — 2026-10-31
 
 ### Changed
