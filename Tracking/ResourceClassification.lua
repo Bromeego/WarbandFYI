@@ -205,6 +205,9 @@ function WBF.ResourceClassification.ClassifyCurrency(currencyID, info)
     if id and WBF.ResourceMeta and WBF.ResourceMeta.KnowsCurrency and WBF.ResourceMeta.KnowsCurrency(id) then
         return WBF.ResourceClassification.PLAYER, "registry"
     end
+    if WBF.Format and WBF.Format.HasInternalMarker and WBF.Format.HasInternalMarker(info.name) then
+        return WBF.ResourceClassification.SYSTEM, "internal-marker"
+    end
     if id and KNOWN_SYSTEM_IDS[id] then
         return WBF.ResourceClassification.SYSTEM, "known-system-id"
     end

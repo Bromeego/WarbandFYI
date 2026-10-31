@@ -190,6 +190,26 @@ check("a storage word leading the name is not a role", classOf(424254, {
     description = "Spend this.",
 }) == PLAYER)
 
+check("a [DNT] turn-in tracker is system", classOf(424260, {
+    name = "[DNT] Nebulous Voidcore Turn-In Tracker",
+    discovered = true,
+    isShowInBackpack = true,
+    description = "Shown anyway.",
+}) == SYSTEM)
+check("a [DNT] currency is system before its fields are read", classOf(424261, {
+    name = "[DNT] Nebulous Voidcore Turn-In Tracker",
+}) == SYSTEM)
+check("a DNT: prefix is system", classOf(424262, { name = "DNT: Season Counter" }) == SYSTEM)
+check("a name that only contains the letters DNT is kept", classOf(424263, {
+    name = "Didntwork Tokens",
+    discovered = true,
+    description = "Spend this.",
+}) == PLAYER)
+check("a stored [DNT] resource event is hidden", WBF.ResourceClassification.HidesEvent({
+    eventType = WBF.EventType and WBF.EventType.Resource or "resource",
+    meta = { resourceID = 424264, name = "[DNT] Nebulous Voidcore Turn-In Tracker" },
+}) == true)
+
 check("bookkeeping name shown in the backpack is kept", classOf(424249, {
     name = "12.0 Delves - System - Seasonal Affix - Events Active",
     discovered = true,
