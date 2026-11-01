@@ -4,6 +4,10 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 
 ## Unreleased
 
+### Added
+
+- Collection Hunts can track things that don't drop from a boss, such as quest rewards, vendor items, world drops and secrets, as **goals**. When the Journal shows it isn't a raid or dungeon boss drop, for example *Vendor: Breanni, Zone: Dalaran*, the form picks **Not a boss drop: track as a goal** for you. You can also choose it from the source list. A goal shows where to get it and stays on your list until you collect it. Mounts, pets, achievements and appearances complete on their own, and items are marked complete by hand. Goals have no lockout, so they never appear in the login FYI.
+
 ### Changed
 
 - Collection Hunts finds the raid or dungeon boss for most drops on its own. When the Journal says something like *Drop: Siegecrafter Blackfuse, Raid: Siege of Orgrimmar*, WarbandFYI checks the Encounter Journal that this boss is in that raid and uses it as the source. Weekly lockouts then work like any other hunt. Which difficulty drops it isn't checked yet. Hand-maintained sources with special rules, such as Invincible's 25-player Heroic or the Headless Horseman's daily bag, still take priority.

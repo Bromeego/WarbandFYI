@@ -118,7 +118,7 @@ local function Store()
                 if type(name) == "string" then target.title = name end
             end
         end
-        if type(key) == "string" and type(target) == "table" and type(target.title) == "string" and type(target.instance) == "string" and type(target.boss) == "string" and (type(target.itemID) == "number" or type(target.achievementID) == "number" or type(target.mountID) == "number" or type(target.petSpeciesID) == "number") and not catalog[key] then
+        if type(key) == "string" and type(target) == "table" and type(target.title) == "string" and (target.goalOnly == true or (type(target.instance) == "string" and type(target.boss) == "string")) and (type(target.itemID) == "number" or type(target.achievementID) == "number" or type(target.mountID) == "number" or type(target.petSpeciesID) == "number") and not catalog[key] then
             catalog[key] = target
             ordered[#ordered + 1] = key
         end
@@ -380,13 +380,29 @@ end
 Hunts.TargetKind = ParseTarget
 
 -- Explicit source selection: an item link alone cannot establish its drop source.
-function Hunts.AddTarget(link, sourceKey)
+-- The source key for a hunt with no boss: a quest reward, vendor item, world
+-- drop or secret. It is tracked until collected and has no weekly lockout.
+Hunts.GOAL = "goal"
+
+-- "Vendor: Breanni, Zone: Dalaran" from the Journal, or nil.
+function Hunts.WhereText(kind, id)
+    local text = kind and JournalSourceText(kind, id)
+    if not text then return nil end
+    local parts = {}
+    for _, line in ipairs(Hunts.SourceLines(text)) do
+        parts[#parts + 1] = line.label and (line.label .. ": " .. line.value) or line.value
+    end
+    return #parts > 0 and table.concat(parts, ", ") or nil
+end
+
+function Hunts.AddTarget(link, sourceKey, where)
     local kind, id = ParseTarget(link)
-    local source = sourceRegistry[sourceKey]
+    local goalOnly = sourceKey == Hunts.GOAL
+    local source = not goalOnly and sourceRegistry[sourceKey] or nil
     if not id then return nil, "Search for a mount and pick it from the list, enter an item ID, or Shift-click an item or pet (or use Use Current Selection)." end
-    if not source then return nil, "Choose a supported source." end
+    if not source and not goalOnly then return nil, "Choose where it drops, or choose Not a boss drop to track it as a goal." end
     local data = Store()
-    if source.fromJournal then data.sources[sourceKey] = source end
+    if source and source.fromJournal then data.sources[sourceKey] = source end
     local key = kind .. id .. "_" .. sourceKey
     if not catalog[key] then
         local title
@@ -407,11 +423,14 @@ function Hunts.AddTarget(link, sourceKey)
         local journalMount = kind == "mount" and Hunts.Mount(id)
         data.custom[key] = { title=title, itemID=kind == "item" and id or nil,
             mountID=journalMount and id or nil, mountIcon=journalMount and journalMount.icon or nil,
-            mountSpellID=(journalMount and journalMount.spellID) or (knownMount and sourceKey == knownMount.sourceKey and source.mountSpellID or nil),
+            mountSpellID=(journalMount and journalMount.spellID) or (knownMount and source and sourceKey == knownMount.sourceKey and source.mountSpellID or nil),
             achievementID=kind == "achievement" and id or nil,
             petSpeciesID=petSpeciesID,
-            instance=source.instance, boss=source.boss,
-            defaultGoal=(kind == "mount" and "mount") or (kind == "achievement" and "achievement") or (petSpeciesID and "pet") or (knownMount and sourceKey == knownMount.sourceKey and "mount" or "item"), custom=true, sourceKey=sourceKey, sourceNote=source.note }
+            instance=source and source.instance or nil, boss=source and source.boss or nil,
+            goalOnly=goalOnly or nil,
+            where=goalOnly and (type(where) == "string" and where:match("%S") and where or Hunts.WhereText(kind, id)) or nil,
+            defaultGoal=(kind == "mount" and "mount") or (kind == "achievement" and "achievement") or (petSpeciesID and "pet") or (knownMount and source and sourceKey == knownMount.sourceKey and "mount" or "item"),
+            custom=true, sourceKey=not goalOnly and sourceKey or nil, sourceNote=source and source.note or nil }
         catalog[key] = data.custom[key]
         ordered[#ordered + 1] = key
     end
@@ -451,6 +470,10 @@ function Hunts.Completion(key)
     end
     if goal == "pet" and target.petSpeciesID and PetCollected(target.petSpeciesID) == true then
         return true, "pet"
+    end
+    if goal == "appearance" and target.itemID and C_TransmogCollection and C_TransmogCollection.PlayerHasTransmog
+        and WBF.Format.SafeCall(C_TransmogCollection.PlayerHasTransmog, target.itemID) == true then
+        return true, "appearance"
     end
     return false
 end
@@ -627,6 +650,8 @@ function Hunts.Status(key, guid)
     local target = catalog[key]
     if not data.enabled[key] or not target then return "off" end
     if Hunts.Completion(key) then return "collected" end
+    -- No lockout to read: a goal is open until it is collected.
+    if target.goalOnly then return "goal" end
     local eligibility = Hunts.Eligibility(key, guid)
     if eligibility == "excluded" or eligibility == "ineligible" then return eligibility end
     if eligibility == "unknown" then return "unknown" end

@@ -273,6 +273,29 @@ check("a hand-picked source stays while the target is unchanged", page.controls.
 page.controls.SourceKey = nil
 WBF.CollectionHunts.KnownSource = function() return nil end
 
+-- A Journal source with no boss behind it becomes a goal.
+WBF.CollectionHunts.GOAL = "goal"
+WBF.CollectionHunts.JournalSource = function(kind, id)
+    if kind == "pet" and id == 99 then return nil, { { label = "Vendor", value = "Breanni" } } end
+    if kind == "pet" and id == 1178 then return "ej1", { { label = "Drop", value = "Siegecrafter Blackfuse" } } end
+    return nil, {}
+end
+PETS[99] = "Lost Kitten"
+input.shown = true
+existingButton.speciesID = 99
+existingButton:Click()
+check("a vendor pet is set up as a goal", page.controls.SourceKey == "goal", tostring(page.controls.SourceKey))
+check("the form says it'll be tracked as a goal", feedback.text:find("tracked as a goal", 1, true) ~= nil, feedback.text)
+page.controls.SourceKey = "manual"
+Page.TargetChanged(true)
+check("an automatic goal doesn't replace a boss picked for the same target", page.controls.SourceKey == "manual")
+input.shown = true
+existingButton.speciesID = 1178
+existingButton:Click()
+check("a boss drop still picks its boss", page.controls.SourceKey == "ej1", tostring(page.controls.SourceKey))
+WBF.CollectionHunts.JournalSource = nil
+page.controls.SourceKey = nil
+
 -- Use Current Selection reads whichever window is open ----------------------------
 
 local use = page.controls.UseSelection

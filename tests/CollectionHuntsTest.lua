@@ -279,6 +279,34 @@ db.collectionHunts.lockouts.A.siegeoforgrimmar.saves = {
 }
 check("a pet from a killed raid boss is done", Hunts.Status(bomb, "A") == "done")
 
+-- Goal hunts: no boss, no lockout, tracked until collected.
+reset()
+local kitten = Hunts.AddTarget("|cff0070dd|Hbattlepet:99:1:3:150:10:10:0000000000000000|h[Lost Kitten]|h|r", Hunts.GOAL)
+local kittenInfo = kitten and Hunts.Catalog()[kitten]
+check("a vendor pet becomes a goal hunt", kittenInfo and kittenInfo.goalOnly and kittenInfo.instance == nil
+    and kittenInfo.title == "Lost Kitten")
+check("a goal hunt keeps where the Journal says it comes from", kittenInfo and kittenInfo.where == "Vendor: Breanni, Zone: Dalaran",
+    kittenInfo and kittenInfo.where)
+petsOwned = 0
+check("an uncollected goal reads as a goal, not an attempt", Hunts.Status(kitten, "A") == "goal")
+check("a goal never reaches the login FYI", Hunts.LoginEntry() == nil and #Hunts.AvailableCharacters(kitten) == 0)
+petsOwned = 1
+check("a collected goal pet completes on its own", Hunts.Status(kitten, "A") == "collected")
+petsOwned = 0
+local quest = Hunts.AddTarget("12345", Hunts.GOAL, "Quest: The Lost Pages, Dalaran")
+check("a goal can carry its own where text", Hunts.Catalog()[quest].where == "Quest: The Lost Pages, Dalaran"
+    and Hunts.Settings(quest).goal == "item")
+check("an item goal waits to be marked complete", Hunts.Status(quest, "A") == "goal"
+    and Hunts.SetCompleted(quest, true) and Hunts.Status(quest, "A") == "collected")
+check("a hunt with no source and no goal is refused", Hunts.AddTarget("12346", nil) == nil)
+-- Saved goals come back after a reload.
+local saved = db
+loadAddon("Tracking/CollectionHunts.lua", WBF)
+db = saved
+local reloaded = WBF.CollectionHunts.Catalog()[kitten]
+check("a goal hunt survives a reload", reloaded and reloaded.goalOnly and WBF.CollectionHunts.Status(kitten, "A") == "goal")
+Hunts = WBF.CollectionHunts
+
 reset()
 check("hunter is not a hunt command", WBF.CollectionHunts.Slash("hunter") == false)
 check("hunter prints nothing", #said == 0)
