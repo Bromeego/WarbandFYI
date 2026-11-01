@@ -15,6 +15,12 @@ local popupHideNote
 local popupPage
 local popupSheet
 local popupCards
+local popupHunts
+-- Cards that join whichever popup is on screen instead of waiting for their
+-- own, such as the warband Collection Hunts list. Each is a builder so the
+-- card stays current while the popup is redrawn. Closing the popup drops them.
+local attached = {}
+local attachedOrder = {}
 local setup
 local setupHeading
 local setupTitle
@@ -251,6 +257,7 @@ local function EnsurePopup()
     popup:Hide()
     popup:SetScript("OnHide", function()
         CloseRowMenu()
+        attached, attachedOrder = {}, {}
         popupCountdownGeneration = popupCountdownGeneration + 1
         -- A short pause so the next queued FYI reads as a new popup.
         if C_Timer and C_Timer.After then
@@ -376,6 +383,23 @@ local function EnsurePopup()
     popupHideNote:SetWordWrap(false)
     popupHideNote:SetText("Hidden until you leave this zone and return.")
     Color(popupHideNote, WBF.UI.Colors.muted)
+    popupHunts = MakeButton(popup, "Collection Hunts", 112)
+    popupHunts:SetPoint("BOTTOMRIGHT", -12, 22)
+    popupHunts:Hide()
+    popupHunts:SetScript("OnClick", function()
+        if WBF.NotebookFyi and WBF.NotebookFyi.ShowHunts then
+            WBF.NotebookFyi.ShowHunts()
+        end
+    end)
+    popupHunts:SetScript("OnEnter", function(owner)
+        GameTooltip:SetOwner(owner, "ANCHOR_TOP")
+        GameTooltip:SetText("Collection Hunts", 1, 0.82, 0.45)
+        WBF.UI.AddTip(GameTooltip, "Show the Collection Hunts this character can make an attempt at right now.", WBF.UI.Colors.tipText, true)
+        GameTooltip:Show()
+    end)
+    popupHunts:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
 
     popupCards = {}
 
@@ -474,12 +498,23 @@ local function Card(index)
     card.Way = MakeButton(card, "Waypoint", 72)
     card.Page = MakeButton(card, "Open Page", 72)
     card.Sheet = MakeButton(card, "Open Sheet", 76)
+    card.Hunts = MakeButton(card, "Open Hunts", 76)
+    card.Hunts:SetScript("OnClick", function()
+        local frame = WBF.UI.frame
+        if frame and not frame:IsShown() then
+            frame:Show()
+        end
+        if WBF.UI.CollectionHunts and WBF.UI.CollectionHunts.Open then
+            WBF.UI.CollectionHunts.Open()
+        end
+    end)
     card.More = CreateFrame("Button", nil, card)
     card.More:SetSize(24, 20)
     BindPopupWheel(card)
     BindPopupWheel(card.Way)
     BindPopupWheel(card.Page)
     BindPopupWheel(card.Sheet)
+    BindPopupWheel(card.Hunts)
     BindPopupWheel(card.More)
     local moreLabel = card.More:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     moreLabel:SetPoint("CENTER")
@@ -547,6 +582,7 @@ local function RenderPopup(group, preserveScroll)
     end
     EnsurePopup()
     CloseRowMenu()
+    popup.group = group
     local contextType = (group.contextType == "WOW_EVENT" or group.contextType == "LOGIN") and group.contextType or "ZONE"
     local contextName = group.contextName or group.zoneName or (contextType == "WOW_EVENT" and "WoW event" or "Zone")
     local headerIcons = {}
@@ -598,7 +634,32 @@ local function RenderPopup(group, preserveScroll)
     end
     popupTitle:SetPoint("TOPRIGHT", -28, -10)
     popupTitle:SetText(Shown(contextName))
-    local count = group.count or #(group.entries or {})
+    for key, build in pairs(type(group.attach) == "table" and group.attach or {}) do
+        if type(build) == "function" then
+            if not attached[key] then
+                attachedOrder[#attachedOrder + 1] = key
+            end
+            attached[key] = build
+        end
+    end
+    local entries = {}
+    local seenAttach = {}
+    for index = 1, #(group.entries or {}) do
+        local entry = group.entries[index]
+        entries[#entries + 1] = entry
+        if entry and entry.attachKey then seenAttach[entry.attachKey] = true end
+    end
+    for _, key in ipairs(attachedOrder) do
+        local build = attached[key]
+        local entry = not seenAttach[key] and build and build() or nil
+        if entry then
+            entry.attachKey = key
+            entries[#entries + 1] = entry
+            seenAttach[key] = true
+        end
+    end
+    popup.attachedKeys = seenAttach
+    local count = #entries
     local noun
     if contextType == "WOW_EVENT" then
         noun = count == 1 and "FYI now" or "FYIs now"
@@ -615,7 +676,6 @@ local function RenderPopup(group, preserveScroll)
     end
     popupCount:SetText(count .. " " .. noun)
     local ids = {}
-    local entries = group.entries or {}
     for index = 1, #popupCards do
         popupCards[index].endStamp = nil
         if popupCards[index].Ends then
@@ -702,7 +762,7 @@ local function RenderPopup(group, preserveScroll)
                 local padding = info and info.indent and 2 or 6
                 local lineHeight = math.max(minHeight, math.ceil((line.Text:GetStringHeight() or 0) + padding))
                 line:SetHeight(lineHeight)
-                Color(line.Text, info and info.completed and WBF.UI.Colors.muted or WBF.UI.Colors.cream)
+                Color(line.Text, info and (info.completed or info.muted) and WBF.UI.Colors.muted or WBF.UI.Colors.cream)
                 line.pageId = entry.pageId
                 line.sectionId = entry.sectionId
                 line.blockId = info and info.blockId or nil
@@ -747,6 +807,9 @@ local function RenderPopup(group, preserveScroll)
         card.Page:SetShown(actions.page and true or false)
         card.Sheet:SetShown(actions.sheet and true or false)
         card.More.triggerId = entry.triggerId
+        card.More:SetShown(entry.triggerId ~= nil)
+        card.Hunts:ClearAllPoints()
+        card.Hunts:SetShown(entry.openHunts and true or false)
         card.Way:ClearAllPoints()
         card.Page:ClearAllPoints()
         card.Sheet:ClearAllPoints()
@@ -759,9 +822,13 @@ local function RenderPopup(group, preserveScroll)
         if actions.page then
             card.Page:SetPoint("TOPLEFT", x, buttonY)
             card.Sheet:SetPoint("TOPLEFT", x + 76, buttonY)
+            x = x + 152
+        end
+        if entry.openHunts then
+            card.Hunts:SetPoint("TOPLEFT", x, buttonY)
         end
         card.More:SetPoint("TOPRIGHT", -6, -4)
-        local height = (actions.waypoint or actions.page) and (-buttonY + 26) or (-lineY + 12)
+        local height = (actions.waypoint or actions.page or entry.openHunts) and (-buttonY + 26) or (-lineY + 12)
         card:SetHeight(height)
         card:Show()
         y = y + height + 6
@@ -770,6 +837,8 @@ local function RenderPopup(group, preserveScroll)
     popup.contextType = contextType
     popup.contextName = contextName
     popup.zoneMapID = contextType == "ZONE" and group.zoneMapID or nil
+    local huntsOffered = WBF.NotebookFyi and WBF.NotebookFyi.HuntsOffered and WBF.NotebookFyi.HuntsOffered()
+    popupHunts:SetShown(huntsOffered and not seenAttach.hunts or false)
     local shared = layout.shared
     if shared and shared.pageId then
         popupPage.pageId = shared.pageId
@@ -871,7 +940,11 @@ local function Current(group)
 end
 
 function WBF.UI.Fyi.Show(group)
-    if type(group) ~= "table" or type(group.entries) ~= "table" or #group.entries == 0 then
+    if type(group) ~= "table" or type(group.entries) ~= "table" then
+        return false
+    end
+    -- A group can be only attached cards, such as the Collection Hunts list.
+    if #group.entries == 0 and not (type(group.attach) == "table" and next(group.attach)) then
         return false
     end
     if InCombatLockdown and InCombatLockdown() then
@@ -888,6 +961,25 @@ function WBF.UI.Fyi.Show(group)
         ScheduleCountdownRefresh()
     end
     return true
+end
+
+function WBF.UI.Fyi.IsShown()
+    return popup ~= nil and popup:IsShown() and true or false
+end
+
+-- Adds a card to the popup on screen, whatever its context, and keeps it there
+-- through redraws until the popup closes. build returns the entry, or nil when
+-- there is nothing to show. True when the card is now on screen.
+function WBF.UI.Fyi.Attach(key, build)
+    if type(key) ~= "string" or type(build) ~= "function" or not WBF.UI.Fyi.IsShown() or not popup.group then
+        return false
+    end
+    if not attached[key] then
+        attachedOrder[#attachedOrder + 1] = key
+    end
+    attached[key] = build
+    RenderPopup(popup.group, true)
+    return popup.attachedKeys and popup.attachedKeys[key] == true or false
 end
 
 function WBF.UI.Fyi.ShowQueued()
@@ -948,6 +1040,16 @@ function WBF.UI.Fyi.Refresh()
         if described then
             entries[#entries + 1] = described
         end
+    end
+    if popup.contextType == "LOGIN" then
+        -- Login cards may have been removed, while attached cards such as
+        -- Collection Hunts still hold the popup open.
+        RenderPopup({ contextType = "LOGIN", contextName = popup.contextName, entries = entries }, true)
+        if popup.ids and #popup.ids == 0 and not next(popup.attachedKeys or {}) then
+            CloseRowMenu()
+            popup:Hide()
+        end
+        return
     end
     if #entries == 0 then
         CloseRowMenu()

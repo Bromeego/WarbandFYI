@@ -368,6 +368,16 @@ local function Build(parent)
         Page.Refresh()
     end)
     controls.NewHunt:SetPoint("TOPLEFT", 12, -66)
+    controls.ShowFyi = Button(root, 130, 26, "Show in FYI", function()
+        if WBF.NotebookFyi and WBF.NotebookFyi.ShowHunts then WBF.NotebookFyi.ShowHunts() end
+    end)
+    controls.ShowFyi:SetScript("OnEnter", function(owner)
+        GameTooltip:SetOwner(owner, "ANCHOR_BOTTOM")
+        GameTooltip:SetText("Show in FYI", 1, 0.82, 0.45)
+        WBF.UI.AddTip(GameTooltip, "Open the FYI popup with the hunts this character can make an attempt at right now.", WBF.UI.Colors.tipText, true)
+        GameTooltip:Show()
+    end)
+    controls.ShowFyi:SetScript("OnLeave", function() GameTooltip:Hide() end)
     controls.Back = Button(root, 120, 26, "Back to Hunts", function()
         adding = false
         Page.Refresh()
@@ -746,6 +756,9 @@ function Page.Refresh()
     end
     controls.NewHunt:SetText(adding and "Adding a hunt..." or "+ Add Hunt")
     controls.NewHunt:SetEnabled(not adding)
+    controls.ShowFyi:ClearAllPoints()
+    controls.ShowFyi:SetPoint("TOPLEFT", math.max(DETAIL_X, (pageWidth or 760) - 142), -14)
+    controls.ShowFyi:SetShown(not adding and #visible > 0)
     controls.ListHeading:SetText("Your hunts ("..#visible..")")
     -- Present actionable hunts first, completed ones second. Keep all data unchanged.
     local active, complete = {}, {}

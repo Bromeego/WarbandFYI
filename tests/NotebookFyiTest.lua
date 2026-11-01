@@ -357,6 +357,40 @@ local quietTrigger = WBF.NotebookFyi.Save({ kind = "block", id = quietNote.id },
 check("saving an FYI inside its zone does not pop", quietTrigger and WBF.NotebookFyi.Observe(539, false) == nil)
 check("the saved FYI still waits for the next entry", WBF.NotebookFyi.Observe(100, false) == nil and WBF.NotebookFyi.Observe(539, false) ~= nil)
 
+-- Login hunts: join an open popup, otherwise open a popup of their own.
+do
+    local savedUI, savedHunts = WBF.UI, WBF.CollectionHunts
+    local card = { title = "Available Collection Hunts", lines = { { text = "Drake" } } }
+    local available = card
+    local open, attachedKey, shown = false, nil, nil
+    WBF.CollectionHunts = {
+        LoginEntry = function() return available end,
+        Active = function() return { { key = "southwind" } } end,
+    }
+    WBF.UI = { Fyi = {
+        IsShown = function() return open end,
+        Attach = function(key, build) attachedKey = build() and key; return true end,
+        Show = function(group) shown = group; return true end,
+    } }
+    open = true
+    WBF.NotebookFyi.ShowLoginFYIs()
+    check("login hunts join the popup already open", attachedKey == "hunts" and shown == nil)
+    open, attachedKey = false, nil
+    WBF.NotebookFyi.ShowLoginFYIs()
+    check("login hunts open their own popup when none is open", attachedKey == nil and shown
+        and shown.attach and shown.attach.hunts and shown.contextName == "Collection Hunts")
+    shown = nil
+    check("Show in FYI opens the hunts popup", WBF.NotebookFyi.ShowHunts() == true and shown and shown.attach.hunts)
+    check("hunts are offered while any hunt is active", WBF.NotebookFyi.HuntsOffered() == true)
+    available, shown = nil, nil
+    local printed = print
+    print = function() end
+    local result = WBF.NotebookFyi.ShowHunts()
+    print = printed
+    check("Show in FYI does nothing when no character can attempt", result == false and shown == nil)
+    WBF.UI, WBF.CollectionHunts = savedUI, savedHunts
+end
+
 if failures > 0 then
     print(failures .. " failed")
     os.exit(1)
