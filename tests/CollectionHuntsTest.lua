@@ -307,6 +307,81 @@ local reloaded = WBF.CollectionHunts.Catalog()[kitten]
 check("a goal hunt survives a reload", reloaded and reloaded.goalOnly and WBF.CollectionHunts.Status(kitten, "A") == "goal")
 Hunts = WBF.CollectionHunts
 
+-- Source lines join into one line of text.
+check("source lines format as one line", Hunts.FormatSourceLines({ { label = "Vendor", value = "Breanni" }, { value = "Dalaran" } })
+    == "Vendor: Breanni, Dalaran" and Hunts.FormatSourceLines({}) == nil)
+
+-- A drop inside a raid whose boss can't be matched names the raid, so the
+-- form asks for the boss instead of guessing a goal.
+local petInfoBefore = C_PetJournal.GetPetInfoBySpeciesID
+C_PetJournal.GetPetInfoBySpeciesID = function(speciesID)
+    if speciesID == 1181 then return "Unmatched", 1, 10, nil, "Drop: Mystery Boss|nRaid: Siege of Orgrimmar" end
+    if speciesID == 1182 then return "Rare Drop", 1, 10, nil, "Drop: Some Rare|nZone: Valley of the Four Winds" end
+    return petInfoBefore(speciesID)
+end
+local noKey, _, inInstance = Hunts.JournalSource("pet", 1181)
+check("an unmatched boss in a known raid names that raid", noKey == nil and inInstance == "Siege of Orgrimmar", tostring(inInstance))
+check("the Encounter Journal tier is put back after an instance lookup", ejTier == 9)
+local _, _, openWorld = Hunts.JournalSource("pet", 1182)
+check("an open-world drop names no instance", openWorld == nil)
+local _, _, vendor = Hunts.JournalSource("pet", 99)
+check("a vendor pet names no instance", vendor == nil)
+C_PetJournal.GetPetInfoBySpeciesID = petInfoBefore
+
+-- Appearance goals count the look from any item that shares it.
+reset()
+local cloak = Hunts.AddTarget("12347", Hunts.GOAL)
+Hunts.Settings(cloak).goal = "appearance"
+local lookCollected = false
+C_TransmogCollection = {
+    GetItemInfo = function(itemID) if itemID == 12347 then return 900, 9001 end end,
+    GetAppearanceInfoBySource = function(sourceID)
+        if sourceID == 9001 then return { appearanceID = 900, appearanceIsCollected = lookCollected, sourceIsCollected = false } end
+    end,
+    PlayerHasTransmog = function() return false end,
+}
+check("an uncollected appearance goal stays open", Hunts.Status(cloak, "A") == "goal")
+lookCollected = true
+check("an appearance collected from another item completes the goal", Hunts.Status(cloak, "A") == "collected")
+C_TransmogCollection = nil
+
+-- Boss hunts need a character high enough level to reach the boss.
+reset()
+local levelDrake = Hunts.AddTarget("63041", "southwind")
+local levelBomb = Hunts.AddTarget("|cff0070dd|Hbattlepet:1178:1:3:150:10:10:0000000000000000|h[Blackfuse Bombling]|h|r", bombKey)
+local levelArfus = Hunts.AddTarget("70000", "headless")
+snapshot("A", now - 3 * DAY)
+local charLevel
+local getBefore = WBF.Characters.Get
+WBF.Characters.Get = function()
+    return { guid = "A", name = "Mira", realm = "Area 52", classFile = "HUNTER", level = charLevel }
+end
+check("without the level APIs no level is required", Hunts.RequiredLevel(levelDrake) == nil)
+GetExpansionLevel = function() return 10 end
+GetMaxLevelForExpansionLevel = function(expansion) return expansion == 9 and 70 or 80 end
+check("a boss hunt needs the previous expansion's level cap", Hunts.RequiredLevel(levelDrake) == 70)
+charLevel = 2
+check("a level 2 character can't attempt Al'Akir", Hunts.Status(levelDrake, "A") == "lowlevel")
+check("a level 2 character gets no hunt FYI", Hunts.LoginEntry() == nil)
+check("a level 2 character isn't listed as able to go", #Hunts.AvailableCharacters(levelDrake) == 0)
+check("a boss pet also needs the level", Hunts.Eligibility(levelBomb, "A") == "lowlevel")
+check("a daily holiday bag is open at any level", Hunts.RequiredLevel(levelArfus) == nil
+    and Hunts.Eligibility(levelArfus, "A") == "eligible")
+charLevel = 70
+check("a level 70 character can attempt it", Hunts.Status(levelDrake, "A") == "available")
+charLevel = nil
+check("a character with no recorded level isn't held back", Hunts.Status(levelDrake, "A") == "available")
+charLevel = 40
+local southwind = Hunts.Source("southwind")
+southwind.minLevel = 35
+check("a source can set its own level", Hunts.RequiredLevel(levelDrake) == 35 and Hunts.Status(levelDrake, "A") == "available")
+southwind.minLevel = nil
+GetExpansionLevel, GetMaxLevelForExpansionLevel = nil, nil
+GetMaxLevelForPlayerExpansion = function() return 80 end
+check("without the expansion API the cap less ten is used", Hunts.RequiredLevel(levelDrake) == 70)
+GetMaxLevelForPlayerExpansion = nil
+WBF.Characters.Get = getBefore
+
 reset()
 check("hunter is not a hunt command", WBF.CollectionHunts.Slash("hunter") == false)
 check("hunter prints nothing", #said == 0)

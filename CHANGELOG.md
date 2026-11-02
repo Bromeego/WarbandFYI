@@ -6,12 +6,12 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 
 ### Added
 
-- Collection Hunts can track things that don't drop from a boss, such as quest rewards, vendor items, world drops and secrets, as **goals**. When the Journal shows it isn't a raid or dungeon boss drop, for example *Vendor: Breanni, Zone: Dalaran*, the form picks **Not a boss drop: track as a goal** for you. You can also choose it from the source list. A goal shows where to get it and stays on your list until you collect it. Mounts, pets, achievements and appearances complete on their own, and items are marked complete by hand. Goals have no lockout, so they never appear in the login FYI.
+- Collection Hunts can track things that don't drop from a boss, such as quest rewards, vendor items, world drops and secrets, as **goals**. When the Journal shows it isn't a raid or dungeon boss drop, for example *Vendor: Breanni, Zone: Dalaran*, the form picks **Not a boss drop: track as a goal** for you. You can also choose it from the source list. If the Journal names a raid or dungeon but WarbandFYI can't match the boss, the form asks you to choose one instead of guessing a goal. A goal shows where to get it and stays on your list until you collect it. Mounts, pets, achievements and appearances complete on their own (an appearance counts once you have the look from any item), and items are marked complete by hand. Goals have no lockout, so they never appear in the login FYI, and the Dashboard shows them as tracked until collected.
 
 ### Changed
 
 - Collection Hunts finds the raid or dungeon boss for most drops on its own. When the Journal says something like *Drop: Siegecrafter Blackfuse, Raid: Siege of Orgrimmar*, WarbandFYI checks the Encounter Journal that this boss is in that raid and uses it as the source. Weekly lockouts then work like any other hunt. Which difficulty drops it isn't checked yet. Hand-maintained sources with special rules, such as Invincible's 25-player Heroic or the Headless Horseman's daily bag, still take priority.
-- Pet hunts count every character as eligible, so they show attempts and appear in the login FYI.
+- Pet hunts don't depend on class, so every character high enough level for the boss is eligible. They show attempts and appear in the login FYI.
 - The login FYI for Collection Hunts is now a short nudge for the character you're playing: each hunt it can make an attempt at, with its icon and where it drops, for example *Drake of the South Wind — Throne of the Four Winds - Al'Akir*. Other characters stay on the Collection Hunts page, and the card is skipped when this character has nothing to attempt.
 - That card joins whichever FYI popup is already open at login, such as **Active events**, instead of waiting unseen until that popup is closed. It has an **Open Hunts** button.
 - The card can be brought back at any time: **Show in FYI** on the Collection Hunts page, the **Collection Hunts** button at the bottom of any FYI popup, or `/wbfyi hunt fyi`.
@@ -23,6 +23,7 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 
 ### Fixed
 
+- Collection Hunts no longer says a low-level character can make an attempt at a raid or dungeon boss. A boss hunt now needs a character at least at the previous expansion's level cap, since that's what soloing legacy content takes. Lower characters show as **Below level** that cap and stay off the login FYI and attempt counts. Holiday daily bags, such as the Headless Horseman's, are still open to every level.
 - Shift-clicking a pet in the Pet Journal, in the list or on the pet card, now fills the Collection Hunts target box, including pets you have not collected yet. The box no longer needs to be clicked into first.
 - Blizzard's internal tracking currencies marked **[DNT]** ("do not translate"), such as **[DNT] Nebulous Voidcore Turn-In Tracker**, no longer appear on the Dashboard, in Resources or in activity. Any already tracked disappear after the next login or `/reload`. The same check already kept quests marked [DNT], [NYI] or [PH] out of activity.
 

@@ -304,14 +304,11 @@ local function Call(fn, ...)
     return WBF.Format.SafeCall(fn, ...)
 end
 
--- Looks a boss up in the Encounter Journal inside the named raid or
--- dungeon. Both names must match a real journal instance and encounter, so a
--- source is never invented from loose text. The journal's selected tier is
--- restored afterwards.
-function Hunts.FindEncounter(bossName, instanceName)
-    if not (EJ_GetNumTiers and EJ_SelectTier and EJ_GetInstanceByIndex and EJ_GetEncounterInfoByIndex) then return nil end
-    local wantedBoss, wantedInstance = NormalizeName(bossName), NormalizeName(instanceName)
-    if wantedBoss == "" or wantedInstance == "" then return nil end
+-- Calls visit(instanceID, name, isRaid) for every raid and dungeon in the
+-- Encounter Journal, newest tier first, until it returns a value. The
+-- journal's selected tier is restored afterwards.
+local function EachJournalInstance(visit)
+    if not (EJ_GetNumTiers and EJ_SelectTier and EJ_GetInstanceByIndex) then return nil end
     local tiers = WBF.Format.AsNumber(Call(EJ_GetNumTiers)) or 0
     local previous = WBF.Format.AsNumber(Call(EJ_GetCurrentTier))
     local found
@@ -321,17 +318,7 @@ function Hunts.FindEncounter(bossName, instanceName)
             for index = 1, 200 do
                 local instanceID, name = Call(EJ_GetInstanceByIndex, index, isRaid)
                 if not instanceID then break end
-                if NormalizeName(name) == wantedInstance then
-                    for encounterIndex = 1, 40 do
-                        local encounterName, _, encounterID = Call(EJ_GetEncounterInfoByIndex, encounterIndex, instanceID)
-                        if not encounterName then break end
-                        if NormalizeName(encounterName) == wantedBoss then
-                            found = { instance = name, boss = encounterName, journalInstanceID = instanceID,
-                                journalEncounterID = encounterID, isRaid = isRaid }
-                            break
-                        end
-                    end
-                end
+                found = visit(instanceID, name, isRaid)
                 if found then break end
             end
             if found then break end
@@ -340,6 +327,41 @@ function Hunts.FindEncounter(bossName, instanceName)
     end
     if previous then Call(EJ_SelectTier, previous) end
     return found
+end
+
+-- Looks a boss up in the Encounter Journal inside the named raid or
+-- dungeon. Both names must match a real journal instance and encounter, so a
+-- source is never invented from loose text.
+function Hunts.FindEncounter(bossName, instanceName)
+    if not EJ_GetEncounterInfoByIndex then return nil end
+    local wantedBoss, wantedInstance = NormalizeName(bossName), NormalizeName(instanceName)
+    if wantedBoss == "" or wantedInstance == "" then return nil end
+    return EachJournalInstance(function(instanceID, name, isRaid)
+        if NormalizeName(name) ~= wantedInstance then return nil end
+        for encounterIndex = 1, 40 do
+            local encounterName, _, encounterID = Call(EJ_GetEncounterInfoByIndex, encounterIndex, instanceID)
+            if not encounterName then break end
+            if NormalizeName(encounterName) == wantedBoss then
+                return { instance = name, boss = encounterName, journalInstanceID = instanceID,
+                    journalEncounterID = encounterID, isRaid = isRaid }
+            end
+        end
+    end)
+end
+
+-- The first Journal source line that names a raid or dungeon in the
+-- Encounter Journal, or nil. It means the target drops inside an instance
+-- even when its boss could not be matched.
+local function InstanceFromLines(lines)
+    local wanted = {}
+    for _, line in ipairs(lines) do
+        local value = NormalizeName(line.value)
+        if value ~= "" then wanted[value] = true end
+    end
+    if next(wanted) == nil then return nil end
+    return EachJournalInstance(function(_, name)
+        if wanted[NormalizeName(name)] then return name end
+    end)
 end
 
 -- A source for Journal source lines that the Encounter Journal confirms: one
@@ -358,14 +380,15 @@ end
 -- Source for a target, read from the Journal's source text. A curated source
 -- wins (it carries special rules such as a required difficulty); otherwise
 -- an Encounter Journal match becomes a source of its own. Returns the source
--- key (or nil) and the Journal's source lines.
+-- key (or nil), the Journal's source lines and, when no boss matched but a
+-- line names a raid or dungeon, that instance's name.
 function Hunts.JournalSource(kind, id)
     local text = JournalSourceText(kind, id)
     if not text then return nil, {} end
     local key, lines = Hunts.SourceFromText(text)
     if key then return key, lines end
     local found = EncounterFromLines(lines)
-    if not found then return nil, lines end
+    if not found then return nil, lines, InstanceFromLines(lines) end
     key = "ej" .. tostring(found.journalEncounterID or (NormalizeName(found.instance) .. NormalizeName(found.boss)))
     Hunts.RegisterSource(key, {
         instance = found.instance, boss = found.boss, isRaid = found.isRaid,
@@ -384,15 +407,20 @@ Hunts.TargetKind = ParseTarget
 -- drop or secret. It is tracked until collected and has no weekly lockout.
 Hunts.GOAL = "goal"
 
--- "Vendor: Breanni, Zone: Dalaran" from the Journal, or nil.
-function Hunts.WhereText(kind, id)
-    local text = kind and JournalSourceText(kind, id)
-    if not text then return nil end
+-- Source lines as one line of text: "Vendor: Breanni, Zone: Dalaran", or nil.
+function Hunts.FormatSourceLines(lines)
     local parts = {}
-    for _, line in ipairs(Hunts.SourceLines(text)) do
+    for _, line in ipairs(lines or {}) do
         parts[#parts + 1] = line.label and (line.label .. ": " .. line.value) or line.value
     end
     return #parts > 0 and table.concat(parts, ", ") or nil
+end
+
+-- Where the Journal says a target comes from, as one line of text, or nil.
+function Hunts.WhereText(kind, id)
+    local text = kind and JournalSourceText(kind, id)
+    if not text then return nil end
+    return Hunts.FormatSourceLines(Hunts.SourceLines(text))
 end
 
 function Hunts.AddTarget(link, sourceKey, where)
@@ -440,6 +468,21 @@ function Hunts.AddTarget(link, sourceKey, where)
 end
 Hunts.AddItem = Hunts.AddTarget -- preserve older callers
 
+-- The look counts as collected from any item that shares it, not only this
+-- one. The item's own source is the fallback when the client can't say.
+local function AppearanceCollected(itemID)
+    local transmog = C_TransmogCollection
+    if not transmog then return false end
+    local _, sourceID = WBF.Format.SafeCall(transmog.GetItemInfo, itemID)
+    sourceID = WBF.Format.AsNumber(sourceID)
+    if sourceID then
+        local info = WBF.Format.SafeCall(transmog.GetAppearanceInfoBySource, sourceID)
+        if type(info) == "table" and (info.appearanceIsCollected == true or info.sourceIsCollected == true) then return true end
+        if WBF.Format.SafeCall(transmog.PlayerHasTransmogItemModifiedAppearance, sourceID) == true then return true end
+    end
+    return WBF.Format.SafeCall(transmog.PlayerHasTransmog, itemID) == true
+end
+
 -- Achievement completion is account-level where Blizzard flags it as such.
 -- Raid lockout attempts remain a separate, per-character measurement.
 function Hunts.AchievementComplete(key)
@@ -471,8 +514,7 @@ function Hunts.Completion(key)
     if goal == "pet" and target.petSpeciesID and PetCollected(target.petSpeciesID) == true then
         return true, "pet"
     end
-    if goal == "appearance" and target.itemID and C_TransmogCollection and C_TransmogCollection.PlayerHasTransmog
-        and WBF.Format.SafeCall(C_TransmogCollection.PlayerHasTransmog, target.itemID) == true then
+    if goal == "appearance" and target.itemID and AppearanceCollected(target.itemID) then
         return true, "appearance"
     end
     return false
@@ -535,52 +577,6 @@ function Hunts.Active()
 end
 
 local validGoals = { achievement = true, appearance = true, item = true, mount = true, pet = true }
-local function Settings(key)
-    local data = Store()
-    if type(data.settings[key]) ~= "table" then data.settings[key] = {} end
-    local setting = data.settings[key]
-    if not validGoals[setting.goal] then setting.goal = catalog[key].defaultGoal end
-    if setting.characterMode ~= "selected" then setting.characterMode = "all" end
-    if type(setting.selected) ~= "table" then setting.selected = {} end
-    return setting
-end
-function Hunts.Settings(key)
-    Store()
-    if not catalog[key] then return nil end
-    return Settings(key)
-end
-
--- This is an explicit, conservative rule set, not a general-purpose loot database.
--- For non-mount items with no established class rule, mark as unverified.
-function Hunts.Eligibility(key, guid)
-    Store()
-    local target = catalog[key]
-    if not target then return "unknown" end
-    local setting = Settings(key)
-    if setting.characterMode == "selected" and not setting.selected[guid] then return "excluded" end
-    local character = WBF.Characters and WBF.Characters.Get and WBF.Characters.Get(guid)
-    if not character then return "unknown" end
-    -- Every character gets its own daily bag, whatever the class.
-    local source = target.sourceKey and sourceRegistry[target.sourceKey]
-    if source and source.daily then return "eligible" end
-    local class = character.classFile
-    -- Battle pet drops have no class or armour restriction.
-    if setting.goal == "pet" and target.petSpeciesID then return "eligible" end
-    if setting.goal == "mount" then
-        if target.mountSpellID then return "eligible" end
-        return "unknown"
-    end
-    if key == "thoridal" and setting.goal == "achievement" then
-        if not class or class == "" then return "unknown" end
-        return target.equipClasses[class] and "eligible" or "ineligible"
-    end
-    -- A manually chosen character represents the user's chosen farming roster,
-    -- not proof of loot or achievement eligibility. Keep status unverified.
-    -- An appearance may be learnable without equipping in modern Retail.
-    -- We cannot prove eligibility for generic item/appearance goals here.
-    return "unknown"
-end
-
 local function Norm(s)
     if type(s) ~= "string" then return "" end
     return s:lower():gsub("[^%w]", "")
@@ -605,6 +601,83 @@ local function SourceForHunt(key, target)
         end
     end
     return nil, nil
+end
+
+local function Settings(key)
+    local data = Store()
+    if type(data.settings[key]) ~= "table" then data.settings[key] = {} end
+    local setting = data.settings[key]
+    if not validGoals[setting.goal] then setting.goal = catalog[key].defaultGoal end
+    if setting.characterMode ~= "selected" then setting.characterMode = "all" end
+    if type(setting.selected) ~= "table" then setting.selected = {} end
+    return setting
+end
+function Hunts.Settings(key)
+    Store()
+    if not catalog[key] then return nil end
+    return Settings(key)
+end
+
+-- The level a character needs before a boss hunt counts as something it can
+-- attempt. Legacy raids are farmed solo, which takes a character at least at
+-- the previous expansion's level cap. A source can
+-- set its own minLevel. Daily holiday bags are open to every level. nil means
+-- there is no rule to apply, so the level is not checked.
+local function PositiveNumber(value)
+    value = WBF.Format.AsNumber(value)
+    return value and value > 0 and value or nil
+end
+local function LegacyRaidLevel()
+    local expansion = PositiveNumber(WBF.Format.SafeCall(GetExpansionLevel))
+    local previous = expansion and PositiveNumber(WBF.Format.SafeCall(GetMaxLevelForExpansionLevel, expansion - 1))
+    if previous then return previous end
+    local cap = PositiveNumber(WBF.Format.SafeCall(GetMaxLevelForPlayerExpansion))
+        or PositiveNumber(WBF.Format.SafeCall(GetMaxPlayerLevel))
+    return cap and cap > 10 and cap - 10 or nil
+end
+function Hunts.RequiredLevel(key)
+    Store()
+    local target = catalog[key]
+    if not target or target.goalOnly then return nil end
+    local source = SourceForHunt(key, target)
+    if source and source.daily then return nil end
+    return PositiveNumber(source and source.minLevel) or LegacyRaidLevel()
+end
+
+-- This is an explicit, conservative rule set, not a general-purpose loot database.
+-- For non-mount items with no established class rule, mark as unverified.
+function Hunts.Eligibility(key, guid)
+    Store()
+    local target = catalog[key]
+    if not target then return "unknown" end
+    local setting = Settings(key)
+    if setting.characterMode == "selected" and not setting.selected[guid] then return "excluded" end
+    local character = WBF.Characters and WBF.Characters.Get and WBF.Characters.Get(guid)
+    if not character then return "unknown" end
+    -- Every character gets its own daily bag, whatever the class.
+    local source = target.sourceKey and sourceRegistry[target.sourceKey]
+    if source and source.daily then return "eligible" end
+    -- Too low to reach the boss, whatever drops. A character saved before its
+    -- level was recorded is not held back; its next login records the level.
+    local needLevel = Hunts.RequiredLevel(key)
+    local level = PositiveNumber(character.level)
+    if needLevel and level and level < needLevel then return "lowlevel" end
+    local class = character.classFile
+    -- Battle pet drops have no class or armour restriction.
+    if setting.goal == "pet" and target.petSpeciesID then return "eligible" end
+    if setting.goal == "mount" then
+        if target.mountSpellID then return "eligible" end
+        return "unknown"
+    end
+    if key == "thoridal" and setting.goal == "achievement" then
+        if not class or class == "" then return "unknown" end
+        return target.equipClasses[class] and "eligible" or "ineligible"
+    end
+    -- A manually chosen character represents the user's chosen farming roster,
+    -- not proof of loot or achievement eligibility. Keep status unverified.
+    -- An appearance may be learnable without equipping in modern Retail.
+    -- We cannot prove eligibility for generic item/appearance goals here.
+    return "unknown"
 end
 
 local function EventRunning(eventKey)
@@ -653,7 +726,7 @@ function Hunts.Status(key, guid)
     -- No lockout to read: a goal is open until it is collected.
     if target.goalOnly then return "goal" end
     local eligibility = Hunts.Eligibility(key, guid)
-    if eligibility == "excluded" or eligibility == "ineligible" then return eligibility end
+    if eligibility == "excluded" or eligibility == "ineligible" or eligibility == "lowlevel" then return eligibility end
     if eligibility == "unknown" then return "unknown" end
     local dailySource = target.sourceKey and sourceRegistry[target.sourceKey]
     if dailySource and dailySource.daily then

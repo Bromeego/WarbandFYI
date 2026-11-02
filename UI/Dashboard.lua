@@ -973,7 +973,7 @@ local function DrawCollectionHunts(parent, y, width)
                 local status = WBF.CollectionHunts.Status(hunt.key, character.guid)
                 if status == "available" then available = available + 1
                 elseif status == "done" then done = done + 1
-                elseif status == "excluded" or status == "ineligible" then excluded = excluded + 1
+                elseif status == "excluded" or status == "ineligible" or status == "lowlevel" then excluded = excluded + 1
                 else unknown = unknown + 1 end
             end
         end
@@ -991,9 +991,12 @@ local function DrawCollectionHunts(parent, y, width)
         row:SetWidth(width)
         row:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -y)
         local thisStatus = current and WBF.CollectionHunts.Status(hunt.key, current) or "unknown"
-        local ownLabels = {available=SUCCESS .. "Ready on this character|r", done=WARNING .. "Attempted this week|r", collected=SUCCESS .. "Collected|r", unknown="Not yet verified", excluded="Not selected", ineligible="Not eligible"}
+        local ownLabels = {available=SUCCESS .. "Ready on this character|r", done=WARNING .. "Attempted this week|r", collected=SUCCESS .. "Collected|r",
+            unknown="Not yet verified", excluded="Not selected", ineligible="Not eligible", lowlevel="Level too low", goal="Goal", closed="Event not running"}
         local own = ownLabels[thisStatus] or "Unknown"
+        -- A goal has no lockout, so there are no attempts to count.
         local summary = thisStatus == "collected" and SUCCESS .. "Goal achieved|r" or
+            hunt.info.goalOnly and "Tracked until collected" or
             (SUCCESS .. available .. " available|r   •   " .. done .. " attempted")
         row.Label:SetText(hunt.info.title .. "   |   " .. own .. "   •   " .. summary)
         y = y + 24
