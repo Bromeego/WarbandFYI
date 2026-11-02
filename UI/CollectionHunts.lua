@@ -18,6 +18,14 @@ local function HuntIcon(info)
         or (info.achievementID and GetAchievementInfo and select(10, GetAchievementInfo(info.achievementID)))
         or (info.petSpeciesID and C_PetJournal and C_PetJournal.GetPetInfoBySpeciesID and select(2, C_PetJournal.GetPetInfoBySpeciesID(info.petSpeciesID)))
 end
+local GOAL_CAPTION = "Not a boss drop: track as a goal"
+-- The source dropdown's caption for a source key, or the prompt when unset.
+local function SourceCaption(sourceKey)
+    if sourceKey == WBF.CollectionHunts.GOAL then return GOAL_CAPTION end
+    local source = sourceKey and WBF.CollectionHunts.Source(sourceKey)
+    if source then return source.instance .. " - " .. source.boss end
+    return "Choose raid / boss"
+end
 local SUCCESS = WBF.UI.Hex(WBF.UI.Colors.success)
 local WARNING = WBF.UI.Hex(WBF.UI.Colors.warning)
 local MUTED = WBF.UI.Hex(WBF.UI.Colors.muted)
@@ -177,6 +185,9 @@ local function Build(parent)
     end)
     controls.Explain = Label(root, "GameFontHighlightSmall", "")
     controls.Explain:SetWordWrap(true)
+    controls.WhereLabel = Label(root, "GameFontNormal", "Where to get it")
+    controls.WhereText = Label(root, "GameFontHighlightSmall", "")
+    controls.WhereText:SetWordWrap(true)
     controls.CompletedNote = Label(root, "GameFontHighlight", "")
     controls.CompletedNote:SetWordWrap(true)
     controls.CompletedSettings = Button(root, 235, 27, "Show hunt settings", function()
@@ -210,23 +221,20 @@ local function Build(parent)
     controls.TargetLabel = Label(root, "GameFontNormal", "What are you hunting?")
     controls.AddHint = Label(root, "GameFontHighlightSmall", "")
     controls.Picked = nil
-    local function ShowSource(sourceKey, fallback)
+    local function ShowSource(sourceKey)
         controls.SourceKey = sourceKey
-        if sourceKey then
-            local source = WBF.CollectionHunts.Source(sourceKey)
-            SetDropdown(controls.SourceSelect, source.instance .. " - " .. source.boss)
-            return "Recognised farming source: " .. source.instance .. "."
-        end
-        SetDropdown(controls.SourceSelect, "Choose raid / boss")
-        return fallback
+        SetDropdown(controls.SourceSelect, SourceCaption(sourceKey))
+        return "Recognised farming source: " .. WBF.CollectionHunts.Source(sourceKey).instance .. "."
     end
     local function PickMount(mount)
         controls.Picked = { text = mount.name, target = "mount:" .. mount.id }
         controls.Input:SetText(mount.name)
         controls.Input:SetCursorPosition(#mount.name)
         controls.Input:ClearFocus()
-        controls.Feedback:SetText(ShowSource(WBF.CollectionHunts.MountSourceKey(mount.id),
-            "Mount selected. Confirm a supported raid source manually; the Journal source text is not a verified boss ID."))
+        -- Setting the text already ran TargetChanged, which read the Journal.
+        -- Only a curated mount source replaces what it chose.
+        local known = WBF.CollectionHunts.MountSourceKey(mount.id)
+        if known then controls.Feedback:SetText(ShowSource(known)) end
         confirmedOwnedInput = nil
         controls.Add:SetText("Add Hunt")
         Page.Refresh()
@@ -313,24 +321,31 @@ local function Build(parent)
         tip:SetText("Use Current Selection", 1, 0.82, 0.45)
         WBF.UI.AddTip(tip, "Fills the box with what's selected in the open Mount Journal, Pet Journal or Achievements window.", WBF.UI.Colors.tipText, true)
     end)
-    controls.SourceLabel = Label(root, "GameFontNormal", "Where does it drop?")
+    controls.SourceLabel = Label(root, "GameFontNormal", "Where does it come from?")
     controls.SourceKey = nil
     controls.SourceSelect = Button(root, 252, 28, "", function(self)
-        local opts={}
+        -- A source picked by hand replaces whatever the form chose or said.
+        local function Choose(sourceKey, feedback)
+            controls.SourceKey=sourceKey
+            confirmedOwnedInput=nil
+            if controls.Add then controls.Add:SetText("Add Hunt") end
+            SetDropdown(controls.SourceSelect, SourceCaption(sourceKey))
+            if controls.Feedback then controls.Feedback:SetText(feedback) end
+        end
+        local opts={ {label=GOAL_CAPTION .. " (quest, vendor, world drop, secret)", action=function()
+            Choose(WBF.CollectionHunts.GOAL, "Tracked as a goal until you collect it. Goals have no lockout.")
+        end} }
         for _, source in ipairs(WBF.CollectionHunts.Sources()) do
             local sourceKey=source.key
-            local caption=source.instance.." - "..source.boss
+            local caption=SourceCaption(sourceKey)
             local label=source.note and (caption.." ("..source.note..")") or caption
             opts[#opts+1]={label=label, action=function()
-                controls.SourceKey=sourceKey
-                confirmedOwnedInput=nil
-                if controls.Add then controls.Add:SetText("Add Hunt") end
-                SetDropdown(controls.SourceSelect, caption)
+                Choose(sourceKey, "Source chosen: " .. caption .. ". Weekly attempts are tracked on each character.")
             end}
         end
         Dropdown(self, opts)
     end)
-    SetDropdown(controls.SourceSelect, "Choose raid / boss")
+    SetDropdown(controls.SourceSelect, SourceCaption(nil))
     controls.Add = Button(root, 252, 29, "Add Hunt", function()
         local input = Page.ResolvedTarget()
         local journalID = tonumber(input:match("^%s*mount:(%d+)%s*$"))
@@ -350,7 +365,9 @@ local function Build(parent)
             selectedKey=key
             controls.Input:SetText("")
             controls.Picked = nil
-            controls.Feedback:SetText("Added hunt. Verify the raid source and farming eligibility.")
+            controls.Feedback:SetText(controls.SourceKey == WBF.CollectionHunts.GOAL
+                and "Added as a goal. It stays on your list until you collect it."
+                or "Added hunt. Verify the raid source and farming eligibility.")
             Page.Refresh()
             RefreshMain()
         else
@@ -577,10 +594,11 @@ local function Flow(x, y, width)
     return flow
 end
 
-local function FormatStatus(status, daily)
+local function FormatStatus(status, daily, needLevel)
     local labels = {available=SUCCESS .. "Available|r", done=daily and WARNING .. "Done today|r" or WARNING .. "Completed this week|r",
-        unknown=MUTED .. "Unverified|r", collected=SUCCESS .. "Collected|r",
-        excluded="Excluded", ineligible="Ineligible", closed=MUTED .. "Event not running|r"}
+        unknown=MUTED .. "Unverified|r", collected=SUCCESS .. "Collected|r", goal=MUTED .. "Goal|r",
+        excluded="Excluded", ineligible="Ineligible", closed=MUTED .. "Event not running|r",
+        lowlevel=MUTED .. (needLevel and ("Below level " .. needLevel) or "Level too low") .. "|r"}
     return labels[status] or status
 end
 
@@ -590,7 +608,7 @@ local DETAIL_WIDGETS = {"AddHeading", "Back", "TargetLabel", "UseSelection", "Ad
     "SourceLabel", "SourceSelect", "Add", "Feedback", "Caution",
     "TargetHeading", "Source", "TargetIcon", "TargetIconBorder", "Toggle", "Remove", "CancelRemove", "Complete",
     "CompletedNote", "CompletedSettings", "GoalLabel", "Goal", "Explain", "ModeLabel", "Mode", "EditCharacters",
-    "ShowAll", "StatusHeading", "StatusText", "CharHeading", "UnknownToggle"}
+    "ShowAll", "StatusHeading", "StatusText", "CharHeading", "UnknownToggle", "WhereLabel", "WhereText"}
 
 local function DrawAddForm(width)
     local flow = Flow(DETAIL_X, 91, width)
@@ -625,7 +643,7 @@ local function DrawAddForm(width)
     controls.Add:SetEnabled((controls.Input:GetText() or ""):match("%S") ~= nil)
     flow:Put(controls.Add, 29, 14)
     flow:Text(controls.Feedback, 14)
-    controls.Caution:SetText("The Mount Journal supplies names and collection status. Raid and boss data comes from the curated registry or your manual selection; unverified sources aren't guessed.")
+    controls.Caution:SetText("Boss drops track weekly attempts on each character. Anything else, such as a quest reward, vendor item, world drop or secret, is tracked as a goal until you collect it.")
     flow:Text(controls.Caution, 0)
     return flow.y
 end
@@ -700,26 +718,30 @@ function Page.TargetChanged(userInput)
     end
     local sourceKey = kind == "mount" and WBF.CollectionHunts.MountSourceKey and WBF.CollectionHunts.MountSourceKey(id)
         or WBF.CollectionHunts.KnownSource(target)
-    local journalKey, journalLines
+    local journalKey, journalLines, journalInstance
     if kind and WBF.CollectionHunts.JournalSource then
-        journalKey, journalLines = WBF.CollectionHunts.JournalSource(kind, id)
+        journalKey, journalLines, journalInstance = WBF.CollectionHunts.JournalSource(kind, id)
     end
     sourceKey = sourceKey or journalKey
     if journalLines and #journalLines > 0 then
-        local parts = {}
-        for _, line in ipairs(journalLines) do
-            parts[#parts + 1] = line.label and (line.label .. ": " .. line.value) or line.value
-        end
         local notes = { message ~= "" and message or nil }
-        notes[#notes + 1] = MUTED .. "Journal: " .. table.concat(parts, ", ") .. "|r"
+        notes[#notes + 1] = MUTED .. "Journal: " .. WBF.CollectionHunts.FormatSourceLines(journalLines) .. "|r"
         local chosen = sourceKey and WBF.CollectionHunts.Source(sourceKey)
         if chosen and chosen.fromJournal then
             notes[#notes + 1] = SUCCESS .. "Found in the Encounter Journal. Check it before adding.|r"
                 .. "\n" .. MUTED .. "Which difficulty drops it isn't checked.|r"
         elseif sourceKey then
             notes[#notes + 1] = SUCCESS .. "Source chosen automatically. Check it before adding.|r"
+        elseif journalInstance then
+            -- It drops inside a raid or dungeon, but its boss wasn't matched.
+            -- Guessing a goal here would quietly lose the weekly lockout.
+            notes[#notes + 1] = WARNING .. "This comes from " .. journalInstance .. ", but its boss couldn't be matched. Choose the boss below.|r"
+                .. "\n" .. MUTED .. "If it isn't a boss drop, choose Not a boss drop to track it as a goal.|r"
         else
-            notes[#notes + 1] = WARNING .. "No raid or dungeon boss found for this source. Choose one below if it fits.|r"
+            -- Nothing with a lockout: track it until it is collected.
+            sourceKey = WBF.CollectionHunts.GOAL
+            notes[#notes + 1] = SUCCESS .. "Not a raid or dungeon boss drop, so it'll be tracked as a goal until you collect it.|r"
+                .. "\n" .. MUTED .. "If it does drop from a boss, choose the boss below.|r"
         end
         message = table.concat(notes, "\n")
     end
@@ -730,13 +752,14 @@ function Page.TargetChanged(userInput)
     local identity = kind and (kind .. ":" .. id) or nil
     local targetChanged = identity ~= controls.LastTarget
     controls.LastTarget = identity
-    if sourceKey and controls.SourceSelect then
+    -- An automatic goal never overrides a boss the player picked for this target.
+    local keepPick = not targetChanged and controls.SourceKey and controls.SourceKey ~= WBF.CollectionHunts.GOAL
+    if sourceKey and controls.SourceSelect and not (keepPick and sourceKey == WBF.CollectionHunts.GOAL) then
         controls.SourceKey = sourceKey
-        local source = WBF.CollectionHunts.Source(sourceKey)
-        SetDropdown(controls.SourceSelect, source.instance .. " - " .. source.boss)
+        SetDropdown(controls.SourceSelect, SourceCaption(sourceKey))
     elseif targetChanged and controls.SourceSelect then
         controls.SourceKey = nil
-        SetDropdown(controls.SourceSelect, "Choose raid / boss")
+        SetDropdown(controls.SourceSelect, SourceCaption(nil))
     end
     if userInput then Page.Refresh() end
 end
@@ -840,6 +863,7 @@ function Page.Refresh()
     -- Holiday bosses reset daily, raids weekly; the wording follows the source.
     local source = info.sourceKey and hunts.Source(info.sourceKey)
     local daily = source and source.daily or false
+    local needLevel = hunts.RequiredLevel(selectedKey)
     local finished, completionMethod = hunts.Completion(selectedKey)
 
     Place(controls.TargetIcon, DETAIL_X, 101)
@@ -851,7 +875,7 @@ function Page.Refresh()
     controls.TargetHeading:SetWidth(width - 48)
     Place(controls.TargetHeading, DETAIL_X + 48, 104)
     controls.TargetHeading:Show()
-    controls.Source:SetText(info.instance.."  —  "..info.boss)
+    controls.Source:SetText(info.goalOnly and (MUTED .. "Goal  —  tracked until collected|r") or (info.instance.."  —  "..info.boss))
     controls.Source:SetWidth(width - 48)
     Place(controls.Source, DETAIL_X + 48, 130)
     controls.Source:Show()
@@ -882,10 +906,24 @@ function Page.Refresh()
         return
     end
 
+    if info.goalOnly then
+        flow:Put(controls.WhereLabel, 14, 6)
+        controls.WhereText:SetText(info.where or (MUTED .. "The Journal doesn't say where this comes from.|r"))
+        flow:Text(controls.WhereText, 18)
+    end
     flow:Put(controls.GoalLabel, 14, 6)
     controls.Goal:SetEnabled(info.defaultGoal~="mount")
     SetDropdown(controls.Goal, ((settings.goal or "item"):gsub("^%l",string.upper)))
     flow:Put(controls.Goal, 28, 8)
+    if info.goalOnly then
+        controls.Explain:SetText(finished and "Collection goal confirmed. Nothing left to do." or
+            (settings.goal == "item" and "Mark it complete when you have it. Mounts, pets, achievements and appearances complete on their own." or
+            "This completes on its own once WoW shows it as collected.") ..
+            "\n" .. MUTED .. "There's no lockout, so goals stay off the login FYI.|r")
+        flow:Text(controls.Explain, 18)
+        root:SetHeight(math.max(610, flow.y + 40, listBottom))
+        return
+    end
     controls.Explain:SetText(finished and
         (completionMethod == "manual" and "Marked complete manually. Reopen if needed." or "Collection goal confirmed by WoW. No further runs required.") or
         selectedKey=="thoridal" and settings.goal=="achievement" and
@@ -893,6 +931,9 @@ function Page.Refresh()
         daily and "The daily loot bag is tracked per character and resets each day." or
         settings.goal=="mount" and "Available raid attempts are tracked per character." or
         "Eligibility is unverified for this goal unless WarbandFYI has an explicit rule.")
+    if needLevel and not finished then
+        controls.Explain:SetText(controls.Explain:GetText() .. "\n" .. MUTED .. "Characters below level " .. needLevel .. " aren't counted.|r")
+    end
     flow:Text(controls.Explain, 18)
     flow:Put(controls.ModeLabel, 14, 6)
     SetDropdown(controls.Mode, settings.characterMode=="selected" and "Selected characters" or "All eligible characters")
@@ -941,7 +982,7 @@ function Page.Refresh()
         for _,char in ipairs(characters) do
             if char.guid then
                 local status = hunts.Status(selectedKey, char.guid)
-                if showAllCharacters or (status~="ineligible" and status~="excluded") or settings.selected[char.guid] then
+                if showAllCharacters or (status~="ineligible" and status~="excluded" and status~="lowlevel") or settings.selected[char.guid] then
                     eligible[#eligible+1]={char=char,status=status}
                 end
             end
@@ -1012,7 +1053,7 @@ function Page.Refresh()
         local name=(char.name or "Unknown")
         local realm=(char.realm and char.realm~="") and (" - "..char.realm) or ""
         -- Keep status legible without truncating the name on narrow columns.
-        b:SetText(prefix..name..realm.."  "..FormatStatus(status, daily))
+        b:SetText(prefix..name..realm.."  "..FormatStatus(status, daily, needLevel))
         b:SetEnabled(editingCharacters and settings.characterMode=="selected")
         b:Show()
     end

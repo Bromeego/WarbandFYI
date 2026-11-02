@@ -109,6 +109,7 @@ WBF.CollectionHunts = {
     end,
     Source = function() return { daily = false, instance = "Raid", boss = "Boss" } end,
     Status = function(_, guid) return statuses[guid] end,
+    RequiredLevel = function() return 70 end,
     TargetKind = function(text)
         text = tostring(text or "")
         local mount = tonumber(text:match("^%s*mount:(%d+)%s*$")); if mount then return "mount", mount end
