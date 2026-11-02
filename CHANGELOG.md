@@ -4,6 +4,8 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 
 ## Unreleased
 
+## 0.2.0-dev.2j — 2026-11-02
+
 ### Added
 
 - Collection Hunts can track things that don't drop from a boss, such as quest rewards, vendor items, world drops and secrets, as **goals**. When the Journal shows it isn't a raid or dungeon boss drop, for example *Vendor: Breanni, Zone: Dalaran*, the form picks **Not a boss drop: track as a goal** for you. You can also choose it from the source list. If the Journal names a raid or dungeon but WarbandFYI can't match the boss, the form asks you to choose one instead of guessing a goal. A goal shows where to get it and stays on your list until you collect it. Mounts, pets, achievements and appearances complete on their own (an appearance counts once you have the look from any item), and items are marked complete by hand. Goals have no lockout, so they never appear in the login FYI, and the Dashboard shows them as tracked until collected.

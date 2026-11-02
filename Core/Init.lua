@@ -1,6 +1,6 @@
 local addonName, WBF = ...
 
-WBF.VERSION = "0.2.0-dev.2i"
+WBF.VERSION = "0.2.0-dev.2j"
 WarbandFYI = WBF
 
 local frame = CreateFrame("Frame")
