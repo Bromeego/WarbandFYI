@@ -7,7 +7,10 @@ local _, WBF = ...
 WBF.UI.MinimapButton = {}
 local MinimapButton = WBF.UI.MinimapButton
 
-local ICON = "Interface\\Icons\\INV_Misc_Book_09"
+-- The same crest as the main window header, with the same fallback.
+local ICON_ATLASES = { "warbands-icon", "warbands-charselect-icon" }
+local ICON_FALLBACK = "Interface\\Icons\\Achievement_GuildPerk_EverybodysFriend"
+local ICON_X, ICON_Y = 6, -5
 local DEFAULT_ANGLE = 200
 local RADIUS_PADDING = 10
 
@@ -141,10 +144,14 @@ local function Create()
     background:SetTexture("Interface\\Minimap\\UI-Minimap-Background")
 
     local icon = button:CreateTexture(nil, "ARTWORK")
-    icon:SetSize(17, 17)
-    icon:SetPoint("TOPLEFT", 7, -6)
-    icon:SetTexture(ICON)
-    icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    icon:SetSize(20, 20)
+    icon:SetPoint("TOPLEFT", ICON_X, ICON_Y)
+    WBF.UI.SetAtlasChain(icon, ICON_ATLASES, ICON_FALLBACK)
+    if not icon:GetAtlas() then
+        -- A square spell icon: trim its baked-in border to fit the ring.
+        icon:SetSize(17, 17)
+        icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    end
     button.icon = icon
 
     local border = button:CreateTexture(nil, "OVERLAY")
@@ -156,10 +163,10 @@ local function Create()
         HandleClick(mouse)
     end)
     button:SetScript("OnMouseDown", function()
-        icon:SetPoint("TOPLEFT", 8, -7)
+        icon:SetPoint("TOPLEFT", ICON_X + 1, ICON_Y - 1)
     end)
     button:SetScript("OnMouseUp", function()
-        icon:SetPoint("TOPLEFT", 7, -6)
+        icon:SetPoint("TOPLEFT", ICON_X, ICON_Y)
     end)
     button:SetScript("OnEnter", function(self)
         ShowTooltip(self, "ANCHOR_LEFT")
@@ -177,7 +184,7 @@ local function Create()
     end)
     button:SetScript("OnDragStop", function(self)
         self:SetScript("OnUpdate", nil)
-        icon:SetPoint("TOPLEFT", 7, -6)
+        icon:SetPoint("TOPLEFT", ICON_X, ICON_Y)
     end)
     return button
 end

@@ -6,7 +6,7 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 
 ### Added
 
-- A **minimap button**: left-click opens or closes WarbandFYI, right-click opens Settings, and drag it to move it around the minimap. It works on square minimaps too. Turn it off with **Show minimap button** in Settings or `/wbfyi minimap`. WarbandFYI is also listed in the minimap's addon menu.
+- A **minimap button** with the same Warband crest as the window header: left-click opens or closes WarbandFYI, right-click opens Settings, and drag it to move it around the minimap. It works on square minimaps too. Turn it off with **Show minimap button** in Settings or `/wbfyi minimap`. WarbandFYI is also listed in the minimap's addon menu.
 - WarbandFYI now runs on **WoW: Forever** as well as Retail, from the same folder. On Forever it switches off what that game doesn't have: Delves, Prey hunts, player housing and the built-in retail raid-drop hunts (such as Invincible or the Onyxian Drake). Your own Collection Hunts and goals still work. Forever keeps its own saved data, separate from Retail. `/wbfyi status` now shows which client was detected. Retail is unchanged.
 
 ### Fixed

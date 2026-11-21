@@ -38,10 +38,12 @@ GetMinimapShape = function() return "ROUND" end
 WarbandFYI_DB = { config = {} }
 
 local toggled, view = 0, nil
+local requestedAtlas, requestedFallback
 local WBF = {
     UI = {
         Colors = { gold = { 1, 1, 1 }, cream = { 1, 1, 1 }, tipText = { 1, 1, 1 } },
         AddTip = function() end,
+        SetAtlasChain = function(_, atlases, fallback) requestedAtlas, requestedFallback = atlases[1], fallback end,
         AddTipRows = function() end,
         frame = {
             view = "week",
@@ -81,6 +83,7 @@ local point = placed and placed.point
 check("placed on the edge at the saved angle", point and math.abs(point[4] - 80) < 0.01 and math.abs(point[5]) < 0.01,
     point and (tostring(point[4]) .. "," .. tostring(point[5])))
 check("button is shown", placed and placed.shown == true)
+check("icon is the window crest", requestedAtlas == "warbands-icon" and requestedFallback == "Interface\\Icons\\Achievement_GuildPerk_EverybodysFriend", requestedAtlas)
 
 placed.scripts.OnClick(placed, "LeftButton")
 check("left-click toggles the window", toggled == 1, toggled)
