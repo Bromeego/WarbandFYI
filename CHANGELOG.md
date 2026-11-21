@@ -4,6 +4,14 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 
 ## Unreleased
 
+### Added
+
+- WarbandFYI now runs on **WoW: Forever** as well as Retail, from the same folder. On Forever it switches off what that game doesn't have: Delves, Prey hunts, player housing and the built-in retail raid-drop hunts (such as Invincible or the Onyxian Drake). Your own Collection Hunts and goals still work. Forever keeps its own saved data, separate from Retail. `/wbfyi status` now shows which client was detected. Retail is unchanged.
+
+### Fixed
+
+- One tracker failing to start, or an event the game client doesn't recognise, no longer stops the rest of WarbandFYI or its window from loading. The error is still reported.
+
 ## 0.2.0-dev.2j — 2026-11-02
 
 ### Added

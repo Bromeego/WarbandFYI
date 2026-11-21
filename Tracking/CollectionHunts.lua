@@ -18,6 +18,15 @@ local sourceRegistry = WBF.CollectionSources.Entries
 local sourceKeys = WBF.CollectionSources.Keys
 local scanReady = false
 
+-- WoW: Forever has none of the curated retail raid drops. Start it with an
+-- empty curated list so only the player's own hunts and sources appear.
+if WBF.Client and not WBF.Client.Supports("curatedHunts") then
+    for key in pairs(catalog) do catalog[key] = nil end
+    for index = #ordered, 1, -1 do ordered[index] = nil end
+    for key in pairs(sourceRegistry) do sourceRegistry[key] = nil end
+    for index = #sourceKeys, 1, -1 do sourceKeys[index] = nil end
+end
+
 -- Mount Journal is the authoritative source for discovery and ownership.
 -- Index once per session; search only this local cache, never scan on each keystroke.
 local mountIndex, mountByID

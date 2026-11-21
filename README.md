@@ -2,7 +2,7 @@
 
 **See what your Warband's been up to.**
 
-WarbandFYI is a World of Warcraft Retail addon that brings your characters' activity and progress into one place. See what you did this session, catch up on the week, or check how things are going across your Warband.
+WarbandFYI is a World of Warcraft addon for Retail and WoW: Forever that brings your characters' activity and progress into one place. See what you did this session, catch up on the week, or check how things are going across your Warband.
 
 ## What it does
 
@@ -17,11 +17,15 @@ Tracking builds as you play with the addon enabled. Log into each character you 
 ## Getting started
 
 1. Download the repository using **Code → Download ZIP**, then extract it.
-2. Rename the extracted folder to `WarbandFYI` and place it in `World of Warcraft/_retail_/Interface/AddOns/`.
+2. Rename the extracted folder to `WarbandFYI` and place it in `World of Warcraft/_retail_/Interface/AddOns/` for Retail, or `World of Warcraft/_forever_/Interface/AddOns/` for WoW: Forever. The same folder works in both.
 3. Check that `WarbandFYI.toc` sits directly inside that folder, enable the addon at character selection, and log in.
 4. Type `/wbfyi` to open it.
 
 WarbandFYI is in active development. The current addon version is listed in [WarbandFYI.toc](WarbandFYI.toc); changes on `main` may be newer than that version label.
+
+## WoW: Forever
+
+The same build runs on WoW: Forever. Features for content Forever doesn't have (Delves, Prey hunts, player housing and the built-in retail raid-drop hunts) switch off there, while everything else, including your own Collection Hunts and goals, works as usual. Forever keeps its own saved data, so its characters and history stay separate from Retail's. `/wbfyi status` shows which client WarbandFYI detected.
 
 ## More information
 

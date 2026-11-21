@@ -566,6 +566,9 @@ local function ClaimedRecently(questID)
 end
 
 function WBF.Prey.ObserveTurnIn(questID)
+    if WBF.Client and not WBF.Client.Supports("prey") then
+        return false
+    end
     questID = WBF.Format.AsNumber(questID)
     if not questID then
         return false
@@ -925,11 +928,17 @@ CloseStaleHunts = function()
 end
 
 function WBF.Prey.AllowStaleClose()
+    if WBF.Client and not WBF.Client.Supports("prey") then
+        return
+    end
     staleAllowed = true
     CloseStaleHunts()
 end
 
 function WBF.Prey.Refresh()
+    if WBF.Client and not WBF.Client.Supports("prey") then
+        return
+    end
     CloseStaleHunts()
     local questID = ActiveQuestID()
     if not questID then
@@ -960,6 +969,9 @@ local function AcceptQuest(questID)
 end
 
 function WBF.Prey.Register(bus)
+    if WBF.Client and not WBF.Client.Supports("prey") then
+        return
+    end
     ReconcileStored()
 
     bus:On("QUEST_ACCEPTED", function(questID)

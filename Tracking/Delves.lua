@@ -155,10 +155,16 @@ local function TryComplete(delayed)
 end
 
 function WBF.Delves.Refresh()
+    if WBF.Client and not WBF.Client.Supports("delves") then
+        return
+    end
     Remember()
 end
 
 function WBF.Delves.Register(bus)
+    if WBF.Client and not WBF.Client.Supports("delves") then
+        return
+    end
     bus:On("SCENARIO_UPDATE", Remember)
     bus:On("SCENARIO_CRITERIA_UPDATE", Remember)
     bus:On("ACTIVE_DELVE_DATA_UPDATE", Remember)

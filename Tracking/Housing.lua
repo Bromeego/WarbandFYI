@@ -617,6 +617,9 @@ function WBF.Housing.NoteToast(itemType, itemName, icon)
 end
 
 function WBF.Housing.Register(bus)
+    if WBF.Client and not WBF.Client.Supports("housing") then
+        return
+    end
     bus:On("HOUSE_DECOR_ADDED_TO_CHEST", AcceptChest)
     bus:On("HOUSING_STORAGE_UPDATED", RefreshPending)
     bus:On("HOUSING_STORAGE_ENTRY_UPDATED", RefreshPending)

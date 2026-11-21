@@ -32,10 +32,23 @@ end
 
 local bus = {}
 
+-- An event the client does not know (a retail-only event on WoW: Forever)
+-- makes RegisterEvent throw. Skip it so the rest of startup still runs.
+local function RegisterKnownEvent(event)
+    if C_EventUtils and C_EventUtils.IsEventValid and not C_EventUtils.IsEventValid(event) then
+        WBF.Debug.Log("skipping unknown event", event)
+        return
+    end
+    local ok = pcall(frame.RegisterEvent, frame, event)
+    if not ok then
+        WBF.Debug.Log("could not register event", event)
+    end
+end
+
 function bus:On(event, callback)
     if not handlers[event] then
         handlers[event] = {}
-        frame:RegisterEvent(event)
+        RegisterKnownEvent(event)
     end
     local list = handlers[event]
     list[#list + 1] = callback
@@ -151,44 +164,51 @@ local function OnLogout()
     WBF.Sessions.HandleLogout()
 end
 
+-- A tracker that fails to start (an API that behaves differently on another
+-- client) must not stop the rest of the addon, or the window, from starting.
+-- The error still reaches the error handler.
+local function Step(callback, ...)
+    xpcall(callback, OnError, ...)
+end
+
 local function Startup()
     if started then
         return
     end
     started = true
     WBF.Database.Init()
-    WBF.NotebookPets.Register(bus)
-    WBF.CharacterTrack.Register(bus)
-    WBF.Economy.Register(bus)
-    WBF.Instances.Register(bus)
-    WBF.CollectionHunts.Register(bus)
-    WBF.Prey.Register(bus)
-    WBF.QuestVisibility.Register(bus)
-    WBF.Quests.Register(bus)
-    WBF.Achievements.Register(bus)
+    Step(WBF.NotebookPets.Register, bus)
+    Step(WBF.CharacterTrack.Register, bus)
+    Step(WBF.Economy.Register, bus)
+    Step(WBF.Instances.Register, bus)
+    Step(WBF.CollectionHunts.Register, bus)
+    Step(WBF.Prey.Register, bus)
+    Step(WBF.QuestVisibility.Register, bus)
+    Step(WBF.Quests.Register, bus)
+    Step(WBF.Achievements.Register, bus)
     if WBF.PlanAchievements and WBF.PlanAchievements.Register then
-        WBF.PlanAchievements.Register(bus)
+        Step(WBF.PlanAchievements.Register, bus)
     end
     if WBF.NotebookSmart and WBF.NotebookSmart.Register then
-        WBF.NotebookSmart.Register(bus)
+        Step(WBF.NotebookSmart.Register, bus)
     end
     if WBF.NotebookFyi and WBF.NotebookFyi.Register then
-        WBF.NotebookFyi.Register(bus)
+        Step(WBF.NotebookFyi.Register, bus)
     end
     if WBF.ContextFyi and WBF.ContextFyi.Register then
-        WBF.ContextFyi.Register(bus)
+        Step(WBF.ContextFyi.Register, bus)
     end
-    WBF.Collections.Register(bus)
-    WBF.Housing.Register(bus)
-    WBF.PetBattles.Register(bus)
-    WBF.Reputation.Register(bus)
-    WBF.Delves.Register(bus)
-    WBF.Professions.Register(bus)
+    Step(WBF.Collections.Register, bus)
+    Step(WBF.Housing.Register, bus)
+    Step(WBF.PetBattles.Register, bus)
+    Step(WBF.Reputation.Register, bus)
+    Step(WBF.Delves.Register, bus)
+    Step(WBF.Professions.Register, bus)
     if WBF.Crafts and WBF.Crafts.Register then
-        WBF.Crafts.Register(bus)
+        Step(WBF.Crafts.Register, bus)
     end
-    WBF.WorldActivity.Register(bus)
-    WBF.Resources.RegisterBus(bus)
+    Step(WBF.WorldActivity.Register, bus)
+    Step(WBF.Resources.RegisterBus, bus)
     WBF.UI.MainWindow.Create()
     if IsLoggedIn and IsLoggedIn() then
         OnLogin()
@@ -324,6 +344,9 @@ local function Slash(message)
         end
         local characters = #WBF.Characters.List()
         print("|cffd4af37WarbandFYI|r", #db.events, "events,", #db.snapshots, "snapshots,", characters, "characters.")
+        if WBF.Client then
+            print("|cffd4af37WarbandFYI|r client:", WBF.Client.Name())
+        end
     elseif text:match("^resetresource%s+") then
         local name = text:match("^resetresource%s+(.+)$")
         local definition, matches = WBF.Resources.Find(name)

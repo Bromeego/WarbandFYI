@@ -5,6 +5,7 @@
 local TESTS = {
     "BackupChainTest",
     "CharacterDiscoveryTest",
+    "ClientTest",
     "CollectionHuntsLayoutTest",
     "PetJournalLinkTest",
     "CollectionHuntsTest",
