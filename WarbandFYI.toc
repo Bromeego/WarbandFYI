@@ -5,6 +5,7 @@
 ## SavedVariables: WarbandFYI_DB, WarbandFYI_Backup
 ## AllowLoadGameType: mainline, camelot
 ## IconTexture: Interface\Icons\INV_Misc_Book_09
+## IconAtlas: warbands-icon
 ## AddonCompartmentFunc: WarbandFYI_OnAddonCompartmentClick
 ## AddonCompartmentFuncOnEnter: WarbandFYI_OnAddonCompartmentEnter
 ## AddonCompartmentFuncOnLeave: WarbandFYI_OnAddonCompartmentLeave
