@@ -12,6 +12,7 @@ local TIMEOUTS = {
 local root
 local debugCheck
 local noticeCheck
+local minimapCheck
 local fyiCheck
 local legacyFyiCheck
 local resourceStatus
@@ -245,6 +246,11 @@ function WBF.UI.Settings.Attach(parent)
     end)
     y = y + 32
 
+    minimapCheck = Check("Show minimap button", 0, y, function(self)
+        WBF.UI.MinimapButton.SetShown(self:GetChecked() and true or false)
+    end)
+    y = y + 32
+
     y = Heading("FYIs & REMINDERS", y + 4, width)
 
     local motto = root:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
@@ -431,6 +437,9 @@ function WBF.UI.Settings.Refresh()
     end
     if noticeCheck then
         noticeCheck:SetChecked(WarbandFYI_DB.config.resourceNotices ~= false)
+    end
+    if minimapCheck and WBF.UI.MinimapButton then
+        minimapCheck:SetChecked(WBF.UI.MinimapButton.IsShown())
     end
     if fyiCheck then
         local enabled = WarbandFYI_DB.config.notebookFyi ~= false

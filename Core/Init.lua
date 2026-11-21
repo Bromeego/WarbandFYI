@@ -210,6 +210,7 @@ local function Startup()
     Step(WBF.WorldActivity.Register, bus)
     Step(WBF.Resources.RegisterBus, bus)
     WBF.UI.MainWindow.Create()
+    Step(WBF.UI.MinimapButton.Init)
     if IsLoggedIn and IsLoggedIn() then
         OnLogin()
     end
@@ -362,8 +363,15 @@ local function Slash(message)
         print("|cffd4af37WarbandFYI|r cleared tracking history for " .. definition.name .. ". The next observation starts a new baseline.")
         WBF.UI.RequestRefresh()
     elseif text == "help" then
-        print("|cffd4af37WarbandFYI|r /wbfyi | /wbfyi fyi | /wbfyi debug | /wbfyi debug resources | /wbfyi debug renown | /wbfyi debug gathering | /wbfyi debug fishing | /wbfyi debug rares | /wbfyi sample | /wbfyi clearsample | /wbfyi reset | /wbfyi resetresource <name> | /wbfyi status")
+        print("|cffd4af37WarbandFYI|r /wbfyi | /wbfyi fyi | /wbfyi debug | /wbfyi debug resources | /wbfyi debug renown | /wbfyi debug gathering | /wbfyi debug fishing | /wbfyi debug rares | /wbfyi sample | /wbfyi clearsample | /wbfyi reset | /wbfyi minimap | /wbfyi resetresource <name> | /wbfyi status")
         print("|cffd4af37WarbandFYI|r /wbfyi search <text> | /wbfyi note <text> | /wbfyi notebook | /wbfyi hunt list | /wbfyi debug notebook | /wbfyi debug events | /wbfyi debug fyis | /wbfyi debug simulateevent \"Darkmoon Faire\"")
+    elseif text == "minimap" then
+        local shown = not WBF.UI.MinimapButton.IsShown()
+        WBF.UI.MinimapButton.SetShown(shown)
+        if WBF.UI.Settings.Refresh then
+            WBF.UI.Settings.Refresh()
+        end
+        print("|cffd4af37WarbandFYI|r minimap button " .. (shown and "shown" or "hidden") .. ".")
     elseif text == "hide" then
         if WBF.UI.frame then
             WBF.UI.frame:Hide()

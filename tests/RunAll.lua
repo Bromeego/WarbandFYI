@@ -15,6 +15,7 @@ local TESTS = {
     "GoldTrackerTest",
     "HousingDecorTest",
     "LifetimeRetentionTest",
+    "MinimapButtonTest",
     "MonthHistoryGapTest",
     "MonthHistoryTest",
     "NotebookFyiTest",

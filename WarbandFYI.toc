@@ -5,6 +5,9 @@
 ## SavedVariables: WarbandFYI_DB, WarbandFYI_Backup
 ## AllowLoadGameType: mainline, camelot
 ## IconTexture: Interface\Icons\INV_Misc_Book_09
+## AddonCompartmentFunc: WarbandFYI_OnAddonCompartmentClick
+## AddonCompartmentFuncOnEnter: WarbandFYI_OnAddonCompartmentEnter
+## AddonCompartmentFuncOnLeave: WarbandFYI_OnAddonCompartmentLeave
 
 Utils/Client.lua
 Utils/Debug.lua
@@ -75,5 +78,6 @@ UI/Fyi.lua
 UI/ContextFyi.lua
 UI/Search.lua
 UI/MainWindow.lua
+UI/MinimapButton.lua
 
 Core/Init.lua
