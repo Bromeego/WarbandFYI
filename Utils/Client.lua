@@ -59,6 +59,27 @@ function Client.Supports(feature)
     return true
 end
 
+-- The player's display name and realm. On WoW: Forever, UnitName's second
+-- value is the character's surname, not the realm, so it is joined onto the
+-- name ("Miranora McFreshnton") and the realm comes from GetRealmName.
+-- Retail returns exactly what UnitName("player") always gave.
+function Client.PlayerName()
+    if not Client.IsForever() then
+        return UnitName("player")
+    end
+    local read = UnitNameUnmodified or UnitName
+    local name, surname = read("player")
+    if type(name) == "string" and type(surname) == "string" and surname ~= "" then
+        local consts = Constants and Constants.CharacterNameSeparatorConsts
+        local separator = consts and consts.CHARACTERNAME_SURNAME_SEPARATOR or " "
+        local tail = separator .. surname
+        if name:sub(-#tail) ~= tail then
+            name = name .. tail
+        end
+    end
+    return name, GetRealmName and GetRealmName() or nil
+end
+
 -- Tests only: forget the cached answer so a new client can be simulated.
 function Client.ResetForTests()
     forever = nil

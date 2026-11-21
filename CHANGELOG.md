@@ -10,6 +10,8 @@ Notable changes to WarbandFYI are recorded here. Work that has not been publishe
 
 ### Fixed
 
+- On WoW: Forever, characters show their full name with surname, such as *Miranora McFreshnton*, and the realm is the real realm. Previously the surname was saved as the realm. Characters already seen are corrected at their next login.
+- Items the game client doesn't have, such as retail holiday tokens on WoW: Forever, are no longer requested over and over, and no longer fill chat with "item_not_cached" lines when debug is on.
 - One tracker failing to start, or an event the game client doesn't recognise, no longer stops the rest of WarbandFYI or its window from loading. The error is still reported.
 
 ## 0.2.0-dev.2j — 2026-11-02

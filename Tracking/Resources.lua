@@ -651,17 +651,37 @@ local function RememberName(definition, name)
     end
 end
 
+-- Items the client says do not exist (a retail item on WoW: Forever), and how
+-- often each uncached item has been requested this session. A missing item is
+-- never requested again: each failed load fires GET_ITEM_INFO_RECEIVED, which
+-- schedules another scan, which would request it again. An item still uncached
+-- after MAX_ITEM_REQUESTS stops being requested and logged, but is still
+-- checked, so a slow load is picked up when it lands.
+local missingItems = {}
+local itemRequests = {}
+local MAX_ITEM_REQUESTS = 5
+
+local function ItemMissing(itemID)
+    return missingItems[itemID] == true or (itemRequests[itemID] or 0) > MAX_ITEM_REQUESTS
+end
+
 local function ItemCached(itemID)
     if not C_Item or not C_Item.IsItemDataCachedByID then
         return true
     end
+    if missingItems[itemID] then
+        return false
+    end
     local ok, cached = pcall(C_Item.IsItemDataCachedByID, itemID)
     if ok and not cached then
-        if C_Item.RequestLoadItemDataByID then
+        local asked = (itemRequests[itemID] or 0) + 1
+        itemRequests[itemID] = asked
+        if asked <= MAX_ITEM_REQUESTS and C_Item.RequestLoadItemDataByID then
             pcall(C_Item.RequestLoadItemDataByID, itemID)
         end
         return false
     end
+    itemRequests[itemID] = nil
     return true
 end
 
@@ -1850,7 +1870,9 @@ end
 local function NoteItem(definition, guid)
     local personal, account, icon = ReadItemParts(definition.id)
     if not personal then
-        ResourceLog(definition, nil, nil, "BAG_UPDATE_DELAYED", guid, "REJECTED_UNREADY", "item_not_cached")
+        if not ItemMissing(definition.id) then
+            ResourceLog(definition, nil, nil, "BAG_UPDATE_DELAYED", guid, "REJECTED_UNREADY", "item_not_cached")
+        end
         return
     end
     RememberIcon(definition, icon)
@@ -4785,7 +4807,16 @@ function WBF.Resources.RegisterBus(bus)
     bus:On("PLAYERBANKSLOTS_CHANGED", function()
         ScheduleItemScan()
     end)
-    bus:On("GET_ITEM_INFO_RECEIVED", function()
+    bus:On("GET_ITEM_INFO_RECEIVED", function(itemID, success)
+        itemID = WBF.Format.AsNumber(itemID)
+        if itemID and success == false then
+            -- Rescanning cannot load an item that does not exist.
+            if not missingItems[itemID] then
+                missingItems[itemID] = true
+                WBF.Debug.Log("item " .. itemID .. " does not exist on this client; no longer requesting it")
+            end
+            return
+        end
         ScheduleItemScan()
     end)
     bus:On("CALENDAR_UPDATE_EVENT_LIST", function()

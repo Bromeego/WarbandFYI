@@ -437,7 +437,12 @@ function WBF.Characters.Update()
         return nil
     end
 
-    local name, realm = UnitName("player")
+    local name, realm
+    if WBF.Client and WBF.Client.PlayerName then
+        name, realm = WBF.Client.PlayerName()
+    else
+        name, realm = UnitName("player")
+    end
     realm = realm or GetRealmName()
     local className, classFile = UnitClass("player")
     local _, raceFile = UnitRace("player")

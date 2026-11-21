@@ -101,6 +101,36 @@ Simulate(120105, 1, nil)
 local retailKeys = CuratedCounts()
 check("retail keeps curated hunt sources", retailKeys > 0, retailKeys)
 
+-- Player names: Forever joins the surname and reads the realm separately;
+-- retail returns UnitName("player") untouched.
+GetRealmName = function() return "Mankrik" end
+UnitNameUnmodified = nil
+
+Simulate(120105, 1, nil)
+UnitName = function() return "Miranora", nil end
+local name, realm = Client.PlayerName()
+check("retail name untouched", name == "Miranora" and realm == nil, tostring(name) .. "/" .. tostring(realm))
+
+Simulate(16001, 1, nil)
+UnitName = function() return "Miranora", "McFreshnton" end
+name, realm = Client.PlayerName()
+check("forever joins the surname", name == "Miranora McFreshnton", name)
+check("forever realm is not the surname", realm == "Mankrik", realm)
+
+UnitName = function() return "Miranora McFreshnton", "McFreshnton" end
+name = Client.PlayerName()
+check("forever does not repeat a surname already present", name == "Miranora McFreshnton", name)
+
+UnitName = function() return "Miranora", nil end
+name, realm = Client.PlayerName()
+check("forever without a surname keeps the first name", name == "Miranora" and realm == "Mankrik", name)
+
+UnitName = function() return "Miranora", nil end
+UnitNameUnmodified = function() return "Miranora", "McFreshnton" end
+name = Client.PlayerName()
+check("forever prefers the unmodified name", name == "Miranora McFreshnton", name)
+UnitNameUnmodified = nil
+
 if failures > 0 then
     print(failures .. " failed")
     os.exit(1)
