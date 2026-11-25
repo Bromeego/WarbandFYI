@@ -33,12 +33,27 @@ local function ChatPatterns()
     return chatPatterns
 end
 
+-- Classic-era skill lines on WoW: Forever report their expansion as
+-- "Unknown". That is not a tier, so it must not become part of the name:
+-- chat skill-ups say plain "Leatherworking", and a prefixed scan name would
+-- never match them and would record every skill-up twice.
+function WBF.Professions.ExpansionName(info)
+    local expansion = type(info) == "table" and info.expansionName or nil
+    if type(expansion) ~= "string" then
+        return nil
+    end
+    expansion = expansion:match("^%s*(.-)%s*$")
+    if expansion == "" or expansion == "Unknown" or (type(UNKNOWN) == "string" and expansion == UNKNOWN) then
+        return nil
+    end
+    return expansion
+end
+
 local function LineName(info)
     local name = info.professionName or info.parentProfessionName or "Profession"
-    if type(info.expansionName) == "string" and info.expansionName ~= "" then
-        if not name:find(info.expansionName, 1, true) then
-            name = info.expansionName .. " " .. name
-        end
+    local expansion = WBF.Professions.ExpansionName(info)
+    if expansion and not name:find(expansion, 1, true) then
+        name = expansion .. " " .. name
     end
     return name
 end
@@ -191,7 +206,7 @@ end
 local function RememberSnapshot(character, skillLineID, info, name, rank, maxRank)
     character.professions = character.professions or {}
     local root = info.professionName or info.parentProfessionName or name
-    local expansion = type(info.expansionName) == "string" and info.expansionName ~= "" and info.expansionName or nil
+    local expansion = WBF.Professions.ExpansionName(info)
     local label = name
     if expansion and root and not tostring(root):find(expansion, 1, true) then
         label = expansion .. " " .. root

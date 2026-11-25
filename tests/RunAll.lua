@@ -11,6 +11,7 @@ local TESTS = {
     "CollectionHuntsTest",
     "ContextFyiTest",
     "EventThrottleTest",
+    "ForeverProfessionNamesTest",
     "FyiQueueTest",
     "GoldTrackerTest",
     "HousingDecorTest",

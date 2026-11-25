@@ -2,9 +2,8 @@
 -- older safety copy. Run from the repo root:
 --   lua tests/BackupChainTest.lua
 --
--- The addon is at schema 7 with no pending upgrade, so these tests load
--- Database.lua with a test-only target schema and no-op migrations patched
--- in at load time. The shipped file is not changed by the test.
+-- These tests load Database.lua with a test-only target schema and no-op
+-- migrations from schema 7 up patched in at load time. The shipped file is not changed by the test.
 
 local script = arg and arg[0] or "tests/BackupChainTest.lua"
 local root = script:match("^(.*)[/\\][Tt]ests[/\\]") or "."
@@ -44,7 +43,7 @@ local function loadAddon(target)
     local source = readFile("Core/Database.lua")
     if target and target > 7 then
         local replaced
-        source, replaced = source:gsub("(local CURRENT_SCHEMA_VERSION = )7(%s)", "%1" .. target .. "%2", 1)
+        source, replaced = source:gsub("(local CURRENT_SCHEMA_VERSION = )%d+(%s)", "%1" .. target .. "%2", 1)
         assert(replaced == 1, "schema constant not found")
         local hook = string.format([[
 for step = 7, %d do
@@ -264,8 +263,10 @@ WBF = loadAddon(8)
 WBF.Database.Init()
 check("the database after an upgrade does not depend on older backups", deepEqual(WarbandFYI_DB, withoutBackup))
 
--- 7. No upgrade, no change: the shipped schema 7 code leaves every backup alone.
+-- 7. No upgrade, no change: a save already at the shipped schema leaves every
+-- backup alone.
 WarbandFYI_DB = schema7Save()
+WarbandFYI_DB.schemaVersion = 8
 WarbandFYI_Backup = existingBackup()
 WarbandFYI_Backup.previous = { { fromSchema = 3, targetSchema = 5, data = { schemaVersion = 3 } } }
 original = WarbandFYI_Backup

@@ -2,7 +2,7 @@ local _, WBF = ...
 
 WBF.Database = {}
 
-local CURRENT_SCHEMA_VERSION = 7
+local CURRENT_SCHEMA_VERSION = 8
 local MAX_EVENTS = 8000
 local MAX_SNAPSHOTS = 4000
 local TRIM_EVENTS_TO = 7000
@@ -854,6 +854,98 @@ Migrations[6] = function(db)
     maintenance.invalidRoutesBlocked = tonumber(maintenance.invalidRoutesBlocked) or 0
     maintenance.totalPruned = tonumber(maintenance.totalPruned) or 0
     maintenance.lastPruneRemoved = tonumber(maintenance.lastPruneRemoved) or 0
+end
+
+-- WoW: Forever reports Classic-era skill lines with the expansion "Unknown",
+-- and earlier builds put that in front of the profession name. Each skill-up
+-- was then recorded twice: "Leatherworking" from chat and
+-- "Unknown Leatherworking" from the skill-line scan.
+local UNKNOWN_PROFESSION = "Unknown "
+local UNKNOWN_DUPLICATE_WINDOW = 300
+
+local function PlainProfession(name)
+    if type(name) == "string" and #name > #UNKNOWN_PROFESSION
+        and name:sub(1, #UNKNOWN_PROFESSION) == UNKNOWN_PROFESSION then
+        return name:sub(#UNKNOWN_PROFESSION + 1)
+    end
+    return nil
+end
+
+local function DropUnknownPrefix(text, prefixed, plain)
+    if type(text) == "string" and text:sub(1, #prefixed) == prefixed then
+        return plain .. text:sub(#prefixed + 1)
+    end
+    return text
+end
+
+-- Schema 8: an "Unknown X" profession record that matches an "X" record for
+-- the same character and rank is removed. One with no such twin was only
+-- seen by the scan, so it is kept and renamed to "X".
+Migrations[7] = function(db)
+    local events = type(db.events) == "table" and db.events or {}
+    local plainAt = {}
+    local function Key(event, profession)
+        return tostring(event.guid) .. "|" .. profession .. "|" .. tostring(event.new)
+    end
+    for index = 1, #events do
+        local event = events[index]
+        local meta = type(event) == "table" and event.meta or nil
+        if type(meta) == "table" and type(meta.profession) == "string" and not PlainProfession(meta.profession) then
+            local key = Key(event, meta.profession)
+            plainAt[key] = plainAt[key] or {}
+            table.insert(plainAt[key], tonumber(event.at) or 0)
+        end
+    end
+
+    local kept = {}
+    for index = 1, #events do
+        local event = events[index]
+        local meta = type(event) == "table" and event.meta or nil
+        local prefixed = type(meta) == "table" and meta.profession or nil
+        local plain = PlainProfession(prefixed)
+        local duplicate = false
+        if plain then
+            local at = tonumber(event.at) or 0
+            local stamps = plainAt[Key(event, plain)]
+            if stamps then
+                for stampIndex = 1, #stamps do
+                    if math.abs(stamps[stampIndex] - at) <= UNKNOWN_DUPLICATE_WINDOW then
+                        duplicate = true
+                        break
+                    end
+                end
+            end
+            if not duplicate then
+                meta.profession = plain
+                meta.eventLabel = DropUnknownPrefix(meta.eventLabel, prefixed, plain)
+                event.text = DropUnknownPrefix(event.text, prefixed, plain)
+            end
+        end
+        if not duplicate then
+            kept[#kept + 1] = event
+        end
+    end
+    if #kept ~= #events then
+        db.events = kept
+    end
+
+    for _, character in pairs(type(db.characters) == "table" and db.characters or {}) do
+        if type(character) == "table" then
+            if type(character.professionNames) == "table" then
+                for key, name in pairs(character.professionNames) do
+                    character.professionNames[key] = PlainProfession(name) or name
+                end
+            end
+            if type(character.professions) == "table" then
+                for _, snap in pairs(character.professions) do
+                    if type(snap) == "table" and snap.expansionName == "Unknown" then
+                        snap.expansionName = nil
+                        snap.label = snap.name or PlainProfession(snap.label) or snap.label
+                    end
+                end
+            end
+        end
+    end
 end
 
 -- Every earlier safety copy stays in WarbandFYI_Backup.previous, oldest

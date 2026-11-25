@@ -258,7 +258,7 @@ WarbandFYI_DB = {
 WBF.Database.ready = false
 WBF.Database.Init()
 local legacy = WarbandFYI_DB.notebook.quickNotes.q1
-check("schema 5 migrates to 7", WarbandFYI_DB.schemaVersion == 7)
+check("schema 5 migrates to 8", WarbandFYI_DB.schemaVersion == 8)
 check("old note survives the schema change", legacy and legacy.text == "Remember the vendor.")
 check("old note becomes a reference fyi", legacy and legacy.type == "REFERENCE" and legacy.trigger == nil)
 check("migration adds fyi storage", type(WarbandFYI_DB.notebook.contextFyis) == "table" and type(WarbandFYI_DB.notebook.fyiHistory) == "table")

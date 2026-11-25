@@ -55,7 +55,7 @@ local function fresh()
 end
 
 fresh()
-check("default database is schema 7", WarbandFYI_DB.schemaVersion == 7)
+check("default database is schema 8", WarbandFYI_DB.schemaVersion == 8)
 check("default database has notebook maps", WarbandFYI_DB.notebook and type(WarbandFYI_DB.notebook.pages) == "table" and type(WarbandFYI_DB.notebook.pageOrder) == "table" and type(WarbandFYI_DB.notebook.quickNotes) == "table")
 check("default database does not keep plans", WarbandFYI_DB.plans == nil)
 
@@ -72,7 +72,7 @@ WarbandFYI_DB = {
     dedupe = {},
 }
 WBF.Database.Init()
-check("schema 2 migrates to 7", WarbandFYI_DB.schemaVersion == 7)
+check("schema 2 migrates to 8", WarbandFYI_DB.schemaVersion == 8)
 check("migration keeps existing events", WarbandFYI_DB.events[1] and WarbandFYI_DB.events[1].text == "Keep me")
 check("migration keeps session ids", WarbandFYI_DB.nextIds.session == 4)
 check("migration adds notebook storage", type(WarbandFYI_DB.notebook.pages) == "table" and WarbandFYI_DB.plans == nil)
