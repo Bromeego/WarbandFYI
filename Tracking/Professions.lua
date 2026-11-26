@@ -264,14 +264,46 @@ function WBF.Professions.Same(left, right)
     return a == b or a:find(b, 1, true) ~= nil or b:find(a, 1, true) ~= nil
 end
 
+-- Each profession has a parent skill line (Leatherworking, 165) with no tier
+-- of its own: the API reports its expansion as "Unknown" and its rank copies
+-- one tier line (Classic Leatherworking on retail, the only tier on WoW:
+-- Forever). Shown beside its tiers it is a duplicate, so it only counts when
+-- no tier line of that profession is known.
+local function TieredProfessions(entries, isTier, enumOf)
+    local tiered = {}
+    for index = 1, #entries do
+        local entry = entries[index]
+        local enum = enumOf(entry)
+        if enum ~= nil and isTier(entry) then
+            tiered[enum] = true
+        end
+    end
+    return tiered
+end
+
 function WBF.Professions.Snapshots(character)
     local list = {}
     local stored = character and character.professions or nil
     if type(stored) ~= "table" then
         return list
     end
+    local snaps = {}
     for _, snap in pairs(stored) do
         if type(snap) == "table" and snap.label then
+            snaps[#snaps + 1] = snap
+        end
+    end
+    -- Saved before parent lines were skipped (or for a character not seen
+    -- since): hide the parent when a tier of the same profession is stored.
+    local function IsTier(snap)
+        return snap.expansionName ~= nil and snap.expansionName ~= "Unknown"
+    end
+    local tiered = TieredProfessions(snaps, IsTier, function(snap)
+        return snap.professionEnum
+    end)
+    for index = 1, #snaps do
+        local snap = snaps[index]
+        if IsTier(snap) or snap.professionEnum == nil or not tiered[snap.professionEnum] then
             list[#list + 1] = snap
         end
     end
@@ -357,11 +389,23 @@ local function EachLine(visitor)
     if not ok or type(lines) ~= "table" then
         return false
     end
+    local entries = {}
     for index = 1, #lines do
         local lineOK, info = pcall(C_TradeSkillUI.GetProfessionInfoBySkillLineID, lines[index])
         if lineOK and type(info) == "table" then
-            visitor(lines[index], info)
+            entries[#entries + 1] = { id = lines[index], info = info }
         end
+    end
+    local tiered = TieredProfessions(entries, function(entry)
+        return WBF.Professions.ExpansionName(entry.info) ~= nil
+    end, function(entry)
+        return WBF.Format.AsNumber(entry.info.profession)
+    end)
+    for index = 1, #entries do
+        local entry = entries[index]
+        local enum = WBF.Format.AsNumber(entry.info.profession)
+        local parent = enum ~= nil and tiered[enum] and WBF.Professions.ExpansionName(entry.info) == nil
+        visitor(entry.id, entry.info, parent)
     end
     return true
 end
@@ -376,7 +420,16 @@ function WBF.Professions.Scan()
     character.professionByName = character.professionByName or {}
 
     local recorded = 0
-    local found = EachLine(function(skillLineID, info)
+    local found = EachLine(function(skillLineID, info, parent)
+        if parent then
+            local key = tostring(skillLineID)
+            if character.professions then
+                character.professions[skillLineID] = nil
+            end
+            character.professionRanks[key] = nil
+            character.professionNames[key] = nil
+            return
+        end
         local rank = WBF.Format.AsNumber(info.skillLevel)
         local maxRank = WBF.Format.AsNumber(info.maxSkillLevel)
         if rank == nil or maxRank == nil or maxRank <= 0 then

@@ -99,6 +99,9 @@ WarbandFYI_DB = {
         skillUp(2, now - 598, "Unknown Leatherworking", 126, 127),
         skillUp(3, now - 300, "Leatherworking", 127, 128),
         skillUp(4, now - 299, "Unknown Leatherworking", 127, 128),
+        -- Retail: the parent's twin is the Classic tier.
+        skillUp(6, now - 200, "Classic Mining", 299, 300),
+        skillUp(7, now - 199, "Unknown Mining", 299, 300),
         -- Only the scan saw this one: kept, renamed.
         skillUp(5, now - 100, "Unknown Skinning", 206, 225),
     },
@@ -119,7 +122,7 @@ for index = 1, #db.events do
     end
 end
 check("schema advanced to 8", db.schemaVersion == 8, "schema=" .. tostring(db.schemaVersion))
-check("duplicate Unknown records removed", #names == 3, "profession events=" .. #names)
+check("duplicate Unknown records removed", #names == 4, "profession events=" .. #names)
 for index = 1, #names do
     check("no Unknown name left: " .. names[index], names[index]:find("Unknown", 1, true) == nil)
 end
@@ -138,22 +141,40 @@ check("snapshot label loses the prefix", character.professions[165].label == "Le
 -- Live scan --------------------------------------------------------------------
 
 local rank = 153
+local LINES = {
+    [165] = { professionName = "Leatherworking", expansionName = "Unknown", profession = 2 },
+    [2945] = { professionName = "Leatherworking", expansionName = "Leatherworking", profession = 2 },
+}
 C_TradeSkillUI = {
     GetAllProfessionTradeSkillLines = function()
-        return { 165 }
+        return { 165, 2945 }
     end,
-    GetProfessionInfoBySkillLineID = function()
-        return { professionName = "Leatherworking", expansionName = "Unknown", skillLevel = rank, maxSkillLevel = 225, isPrimaryProfession = true }
+    GetProfessionInfoBySkillLineID = function(id)
+        local line = LINES[id]
+        return { professionName = line.professionName, expansionName = line.expansionName, profession = line.profession,
+            skillLevel = rank, maxSkillLevel = 225, isPrimaryProfession = true }
     end,
 }
 WBF.Characters.GetCurrent = function()
     return character
 end
 
+-- Saved before parent lines were skipped: both cards stored.
+local stale = {
+    professions = {
+        [165] = { skillLineID = 165, name = "Leatherworking", label = "Leatherworking", professionEnum = 2, isPrimary = true },
+        [2945] = { skillLineID = 2945, name = "Leatherworking", expansionName = "Leatherworking", label = "Leatherworking", professionEnum = 2, isPrimary = true },
+        [393] = { skillLineID = 393, name = "Skinning", label = "Skinning", professionEnum = 11, isPrimary = true },
+    },
+}
+local shown = WBF.Professions.Snapshots(stale)
+check("a stored parent beside its tier is hidden", #shown == 2 and shown[1].skillLineID ~= 165 and shown[2].skillLineID ~= 165)
+
 local before = #db.events
 WBF.Professions.Scan()
-check("scan stores the plain name", character.professionNames["165"] == "Leatherworking")
-check("scan snapshot has no Unknown label", character.professions[165].label == "Leatherworking")
+check("scan stores the tier under its plain name", character.professionNames["2945"] == "Leatherworking")
+check("scan drops the parent line", character.professions[165] == nil and character.professionNames["165"] == nil)
+check("one Leatherworking card", #WBF.Professions.Snapshots(character) == 1, "cards=" .. #WBF.Professions.Snapshots(character))
 
 rank = 154
 WBF.Professions.FromChat("Your skill in Leatherworking has increased to 154.")

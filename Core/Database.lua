@@ -878,23 +878,30 @@ local function DropUnknownPrefix(text, prefixed, plain)
     return text
 end
 
--- Schema 8: an "Unknown X" profession record that matches an "X" record for
--- the same character and rank is removed. One with no such twin was only
--- seen by the scan, so it is kept and renamed to "X".
+-- Schema 8: an "Unknown X" profession record that matches an "X" record (or
+-- a tier such as "Classic X") for the same character and rank is removed.
+-- One with no such twin was only seen by the scan, so it is kept and renamed.
 Migrations[7] = function(db)
     local events = type(db.events) == "table" and db.events or {}
-    local plainAt = {}
-    local function Key(event, profession)
-        return tostring(event.guid) .. "|" .. profession .. "|" .. tostring(event.new)
+    -- Other records of each character and rank. On retail the twin of
+    -- "Unknown Skinning" is the tier, "Classic Skinning"; on Forever it is
+    -- plain "Skinning".
+    local others = {}
+    local function Key(event)
+        return tostring(event.guid) .. "|" .. tostring(event.new)
     end
     for index = 1, #events do
         local event = events[index]
         local meta = type(event) == "table" and event.meta or nil
         if type(meta) == "table" and type(meta.profession) == "string" and not PlainProfession(meta.profession) then
-            local key = Key(event, meta.profession)
-            plainAt[key] = plainAt[key] or {}
-            table.insert(plainAt[key], tonumber(event.at) or 0)
+            local key = Key(event)
+            others[key] = others[key] or {}
+            table.insert(others[key], { profession = meta.profession, at = tonumber(event.at) or 0 })
         end
+    end
+    local function IsTwin(profession, plain)
+        return profession == plain
+            or (#profession > #plain and profession:sub(-(#plain + 1)) == " " .. plain)
     end
 
     local kept = {}
@@ -906,13 +913,12 @@ Migrations[7] = function(db)
         local duplicate = false
         if plain then
             local at = tonumber(event.at) or 0
-            local stamps = plainAt[Key(event, plain)]
-            if stamps then
-                for stampIndex = 1, #stamps do
-                    if math.abs(stamps[stampIndex] - at) <= UNKNOWN_DUPLICATE_WINDOW then
-                        duplicate = true
-                        break
-                    end
+            local candidates = others[Key(event)] or {}
+            for candidateIndex = 1, #candidates do
+                local candidate = candidates[candidateIndex]
+                if IsTwin(candidate.profession, plain) and math.abs(candidate.at - at) <= UNKNOWN_DUPLICATE_WINDOW then
+                    duplicate = true
+                    break
                 end
             end
             if not duplicate then
