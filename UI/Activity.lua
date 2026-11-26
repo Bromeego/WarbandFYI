@@ -26,6 +26,9 @@ function WBF.UI.Activity.Attach(parent)
     petLabel:SetJustifyH("RIGHT")
     petLabel:SetText("Pet Battles")
     petLabel:SetTextColor(WBF.UI.Colors.gold[1], WBF.UI.Colors.gold[2], WBF.UI.Colors.gold[3])
+    if WBF.Client and not WBF.Client.Supports("petBattles") then
+        petButton:Hide()
+    end
     petButton:SetScript("OnClick", function()
         if WBF.UI.frame then
             local period = WBF.UI.frame.view

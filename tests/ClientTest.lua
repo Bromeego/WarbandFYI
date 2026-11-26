@@ -25,7 +25,7 @@ local function Simulate(interface, projectID, camelotID)
     Client.ResetForTests()
 end
 
-local FEATURES = { "delves", "prey", "housing", "curatedHunts", "collections", "reputation", "gold" }
+local FEATURES = { "delves", "prey", "housing", "curatedHunts", "petBattles", "collections", "reputation", "gold" }
 
 -- Retail 12.1.5: mainline project, no Camelot project defined.
 Simulate(120105, 1, nil)
@@ -51,6 +51,7 @@ check("forever drops delves", Client.Supports("delves") == false)
 check("forever drops prey", Client.Supports("prey") == false)
 check("forever drops housing", Client.Supports("housing") == false)
 check("forever drops curated hunts", Client.Supports("curatedHunts") == false)
+check("forever drops pet battles", Client.Supports("petBattles") == false)
 check("forever keeps collections", Client.Supports("collections") == true)
 check("forever keeps gold", Client.Supports("gold") == true)
 

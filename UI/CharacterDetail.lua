@@ -13,7 +13,7 @@ local subText
 local TABS = {
     { id = "overview", label = "Overview" },
     { id = "professions", label = "Professions" },
-    { id = "petBattles", label = "Pet Battles" },
+    { id = "petBattles", label = "Pet Battles", feature = "petBattles" },
     { id = "collections", label = "Collections" },
     { id = "activity", label = "Activity" },
 }
@@ -630,8 +630,18 @@ function WBF.UI.CharacterDetail.Render(summary, context, width)
         cards = snapshots
     end
 
+    local tabs = {}
+    local tabShown = {}
+    for index = 1, #TABS do
+        local entry = TABS[index]
+        if not entry.feature or not WBF.Client or WBF.Client.Supports(entry.feature) then
+            tabs[#tabs + 1] = entry
+            tabShown[entry.id] = true
+        end
+    end
+
     local tab = context.tab
-    if not tab or tab == "" then
+    if not tab or tab == "" or not tabShown[tab] then
         tab = (#cards > 0 or periodStats.used > 0 or periodStats.knowledge > 0 or periodStats.recipes > 0) and "professions" or "overview"
     end
 
@@ -682,12 +692,13 @@ function WBF.UI.CharacterDetail.Render(summary, context, width)
     y = 62
 
     local tabX = 0
-    for index = 1, #TABS do
+    for index = 1, #tabs do
+        local entry = tabs[index]
         local button = WBF.UI.Acquire(TabPool(), board)
         button:SetPoint("TOPLEFT", board, "TOPLEFT", tabX, -y)
-        button:Apply(TABS[index], TABS[index].id == tab, function()
+        button:Apply(entry, entry.id == tab, function()
             if WBF.UI.frame and WBF.UI.frame.SetCharacterTab then
-                WBF.UI.frame:SetCharacterTab(TABS[index].id)
+                WBF.UI.frame:SetCharacterTab(entry.id)
             end
         end)
         tabX = tabX + button:GetWidth()

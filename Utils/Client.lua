@@ -15,6 +15,7 @@ local RETAIL_ONLY = {
     delves = true,
     prey = true,
     housing = true,
+    petBattles = true, -- no battle pets in vanilla content
     curatedHunts = true, -- the built-in raid-drop sources are retail items
 }
 
