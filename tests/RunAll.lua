@@ -15,6 +15,7 @@ local TESTS = {
     "FyiQueueTest",
     "GoldTrackerTest",
     "HousingDecorTest",
+    "InstanceRejoinTest",
     "LifetimeRetentionTest",
     "MinimapButtonTest",
     "MonthHistoryGapTest",

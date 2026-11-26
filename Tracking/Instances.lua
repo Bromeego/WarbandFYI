@@ -19,6 +19,13 @@ local lastMythicKey = nil
 local lastMythicAt = 0
 local settled = false
 local BOSS_DEDUPE_SECONDS = 8
+-- Dying and running back in from the graveyard (or stepping out and back)
+-- is the same run. An empty instance resets after 30 minutes, so a return
+-- to the same instance within that time continues the run. Resetting
+-- instances ends it: the next entry is a fresh copy, which matters for normal
+-- dungeons because they carry no lockout id to tell the copies apart.
+local REJOIN_SECONDS = 30 * 60
+local resetPattern
 
 local function DifficultyInfo(difficultyID)
     difficultyID = WBF.Format.AsNumber(difficultyID)
@@ -129,6 +136,14 @@ end
 
 local function ClearInstance()
     local db = WBF.Database.Get()
+    if type(db.currentInstance) == "table" then
+        local left = {}
+        for field, value in pairs(db.currentInstance) do
+            left[field] = value
+        end
+        left.leftAt = WBF.Time.Now()
+        db.lastInstance = left
+    end
     db.currentInstance = nil
     local session = WBF.Sessions.GetActive and WBF.Sessions.GetActive() or nil
     if session then
@@ -163,6 +178,14 @@ function WBF.Instances.HandleEnteringWorld(isReload)
         StoreInstance(live)
         return
     end
+    local left = WBF.Database.Get().lastInstance
+    if type(left) == "table" and type(left.leftAt) == "number"
+        and WBF.Time.Now() - left.leftAt <= REJOIN_SECONDS and SameInstance(left, live) then
+        WBF.Database.Get().lastInstance = nil
+        StoreInstance(live)
+        return
+    end
+    WBF.Database.Get().lastInstance = nil
 
     StoreInstance(live)
     local difficultyName = live.difficultyName
@@ -300,12 +323,28 @@ local function RecordMythicPlus()
     })
 end
 
+-- "Excavation Site: Wetlands has been reset." Only the player who resets
+-- sees it; anyone else in the group continues the run if they return within
+-- the window.
+function WBF.Instances.FromSystemChat(text)
+    if type(text) ~= "string" or (issecretvalue and issecretvalue(text)) then
+        return
+    end
+    resetPattern = resetPattern or WBF.Format.CompileGlobal("INSTANCE_RESET_SUCCESS")
+    if resetPattern and WBF.Format.MatchGlobal(text, resetPattern) then
+        WBF.Database.Get().lastInstance = nil
+    end
+end
+
 function WBF.Instances.Register(bus)
     if not (C_Timer and C_Timer.After) then
         settled = true
     end
     bus:On("PLAYER_ENTERING_WORLD", function(_, isReload)
         WBF.Instances.HandleEnteringWorld(isReload and true or false)
+    end)
+    bus:On("CHAT_MSG_SYSTEM", function(text)
+        WBF.Instances.FromSystemChat(text)
     end)
 
     bus:On("ENCOUNTER_END", function(encounterID, encounterName, difficultyID, groupSize, success)
